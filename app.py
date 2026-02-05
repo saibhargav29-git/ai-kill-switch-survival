@@ -45,7 +45,22 @@ st.markdown(f"""
         border: 3px solid #ff4b4b !important; box-shadow: 0 0 20px #ff0000;
         font-size: 22px !important;
     }}
-    .certificate-box {{ border: 5px double #00ff41; padding: 40px; background-color: #0a140a; text-align: center; border-radius: 15px; box-shadow: 0 0 40px #00ff41; margin: 50px auto; max-width: 800px; }}
+    .certificate-box {{ 
+        border: 5px double #00ff41; 
+        padding: 40px; 
+        background-color: #0a140a; 
+        text-align: center; 
+        border-radius: 15px; 
+        box-shadow: 0 0 40px #00ff41; 
+        margin: 50px auto; 
+        max-width: 800px; 
+    }}
+    .force-text {{ 
+        font-style: italic; 
+        color: #fff; 
+        text-shadow: 0 0 10px #00ff41; 
+        font-size: 1.5em;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -69,6 +84,10 @@ def next_sector():
     st.session_state.status = "active"
 
 # --- 5. APP FLOW ---
+
+# TOP BRANDING
+st.markdown('<div style="text-align:center; letter-spacing: 5px; color:#00ff41;">🛡️ ENDOR LABS | RSA 2026</div>', unsafe_allow_html=True)
+
 if not st.session_state.pilot_name:
     st.title("📟 IMPERIAL COMMAND: LOGIN")
     with st.form("login"):
@@ -88,7 +107,6 @@ elif st.session_state.lvl <= len(THREAT_POOL):
         st.markdown(f"### {st.session_state.current_threat['title']}")
         code_box = st.empty()
         
-        # Only type if the user hasn't hit the switch and we aren't already in panic
         if not st.session_state.halted and not st.session_state.panic:
             full_text = ""
             lines = st.session_state.current_threat["code"].split('\n')
@@ -102,14 +120,15 @@ elif st.session_state.lvl <= len(THREAT_POOL):
                     time.sleep(0.01)
                 full_text += "\n"
             
-            # If the loop finished naturally, trigger panic once
             if not st.session_state.halted:
                 st.session_state.panic = True
                 st.rerun()
         else:
             code_box.code(st.session_state.current_threat["code"], language="python")
             if st.session_state.status == "success":
-                st.success(f"🎯 NEUTRALIZED: {st.session_state.current_threat['info']}")
+                # ADDED: Flavor text here
+                st.success(f"🎯 {st.session_state.current_threat['info']}")
+                st.markdown('<p class="force-text">The Force is strong with this pilot!</p>', unsafe_allow_html=True)
             elif st.session_state.status == "fail":
                 st.error(f"❌ MISFIRE: {st.session_state.current_threat['info']}")
             elif st.session_state.panic:
@@ -125,8 +144,23 @@ elif st.session_state.lvl <= len(THREAT_POOL):
             st.button("🚀 NEXT SECTOR", on_click=next_sector)
 
 else:
+    # --- FINAL CERTIFICATE ---
     st.balloons()
-    st.markdown(f'<div class="certificate-box"><h1>CERTIFICATE OF MERIT</h1><h2>{st.session_state.pilot_name.upper()}</h2><hr><h3>FINAL REPUTATION: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
+    # Rank Logic
+    rank = "JEDI MASTER" if st.session_state.score >= 300 else "REBEL AGENT"
+    
+    st.markdown(f"""
+        <div class="certificate-box">
+            <h1>CERTIFICATE OF MERIT</h1>
+            <h2 style="letter-spacing:10px;">{st.session_state.pilot_name.upper()}</h2>
+            <p class="force-text">"The Force is strong with this pilot."</p>
+            <hr style="border: 1px solid #00ff41;">
+            <h3>RANK: {rank}</h3>
+            <h3>FINAL REPUTATION: {st.session_state.score}</h3>
+            <p style="font-size: 10px; color: #555;">VERIFIED BY ENDOR LABS CYBER COMMAND</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
     if st.button("REBOOT FOR NEXT PILOT"):
         for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
