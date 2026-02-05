@@ -29,7 +29,7 @@ if 'challenge_pool' not in st.session_state:
 if 'current_threat' not in st.session_state:
     st.session_state.current_threat = random.choice(st.session_state.challenge_pool)
 
-# --- 2. THEME & CSS ---
+# --- 2. THEME & STAR WARS CSS ---
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
 bg_color = "#05080a"
@@ -45,16 +45,24 @@ elif st.session_state.status == "fail":
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color} !important; transition: 0.5s; }}
-    h1, h2, h3, p, .stMetric {{ color: {text_color} !important; font-family: 'Courier New', monospace; }}
+    h1, h2, h3, p, .stMetric, .stTable {{ color: {text_color} !important; font-family: 'Courier New', monospace; }}
     .stButton>button {{ 
         background: radial-gradient(circle, #ff0000 0%, #8b0000 100%) !important; 
         color: white !important; width: 100%; height: 6em; font-weight: bold; 
         border: 3px solid #ff4b4b !important; box-shadow: 0 0 20px #ff0000;
         font-size: 22px !important;
     }}
-    .stProgress > div > div > div > div {{ background-color: {text_color} !important; }}
-    .certificate-box {{ border: 5px double #00ff41; padding: 40px; background-color: #0a140a; text-align: center; border-radius: 15px; box-shadow: 0 0 40px #00ff41; margin: 20px auto; }}
-    .force-text {{ font-style: italic; color: #fff; text-shadow: 0 0 10px #00ff41; font-size: 1.5em; }}
+    .certificate-box {{ 
+        border: 5px double #00ff41; padding: 40px; background-color: #0a140a; 
+        text-align: center; border-radius: 15px; box-shadow: 0 0 40px #00ff41; 
+        margin: 20px auto; 
+    }}
+    .leaderboard-style {{
+        background-color: rgba(0, 255, 65, 0.1);
+        border: 1px solid #00ff41;
+        padding: 20px;
+        border-radius: 10px;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -84,9 +92,7 @@ if not st.session_state.pilot_name:
     with st.form("login"):
         name = st.text_input("Enter Pilot Callsign:")
         if st.form_submit_button("INITIATE MISSION"):
-            if name: 
-                st.session_state.pilot_name = name
-                st.rerun()
+            if name: st.session_state.pilot_name = name; st.rerun()
 
 elif st.session_state.lvl <= 5:
     st.title("📟 IMPERIAL COMMAND TERMINAL")
@@ -112,20 +118,17 @@ elif st.session_state.lvl <= 5:
             lines = st.session_state.current_threat["code"].split('\n')
             total_chars = len(st.session_state.current_threat["code"])
             current_chars = 0
-            
             for line in lines:
                 if st.session_state.halted: break
                 for char in line:
                     if st.session_state.halted: break
                     full_text += char
                     current_chars += 1
-                    progress = min(current_chars / total_chars, 1.0)
-                    timer_placeholder.progress(progress, text="⏳ DEPLOYING CODE...")
+                    timer_placeholder.progress(min(current_chars/total_chars, 1.0), text="⏳ DEPLOYING...")
                     code_box.code(full_text + "█", language="python")
                     time.sleep(st.session_state.typing_speed)
                 full_text += "\n"
                 time.sleep(st.session_state.typing_speed * 2)
-            
             if not st.session_state.halted:
                 st.session_state.panic = True
                 st.rerun()
@@ -134,19 +137,20 @@ elif st.session_state.lvl <= 5:
             code_box.code(st.session_state.current_threat["code"], language="python")
             if st.session_state.status == "success":
                 status_box.success(f"🎯 NEUTRALIZED: {st.session_state.current_threat['info']}")
-                st.markdown('<p class="force-text">The Force is strong with this pilot!</p>', unsafe_allow_html=True)
             elif st.session_state.status == "fail":
                 status_box.error("❌ MISFIRE! System was safe.")
             elif st.session_state.panic:
-                status_box.warning("⚠️ DEPLOYMENT FINISHED. Threat active in system!")
+                status_box.warning("⚠️ DEPLOYMENT FINISHED.")
 
 else:
-    # --- 5. CERTIFICATE & LEADERBOARD ---
+    # --- 5. FINAL CERTIFICATE & LEADERBOARD ---
+    # Instead of balloons, we use a Star Wars Hyperspace GIF
+    st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKVUn7iM8FMEU24/giphy.gif" width="400"></div>', unsafe_allow_html=True)
+    
     conn = st.connection("gsheets", type=GSheetsConnection)
     
     if not st.session_state.db_updated:
         try:
-            # TTL=0 ensures we don't read cached data from the previous player
             df = conn.read(worksheet="Sheet1", ttl=0)
             new_row = pd.DataFrame([{"Pilot": st.session_state.pilot_name, "Score": st.session_state.score}])
             updated_df = pd.concat([df, new_row], ignore_index=True)
@@ -154,48 +158,41 @@ else:
             st.session_state.db_updated = True
         except: pass
 
-    st.balloons()
-    rank = "JEDI MASTER" if st.session_state.score >= 400 else "REBEL AGENT"
     st.markdown(f"""
         <div class="certificate-box">
-            <h1>CERTIFICATE OF MERIT</h1>
-            <h2>{st.session_state.pilot_name.upper()}</h2>
-            <p class="force-text">"The Force is strong with this pilot."</p>
+            <h1 style="color:#00ff41;">COMMENDATION</h1>
+            <h2 style="letter-spacing:10px; color:white;">{st.session_state.pilot_name.upper()}</h2>
+            <p style="font-style:italic; color:#00ff41;">"The Force is strong with this one."</p>
             <hr style="border: 1px solid #00ff41;">
-            <h3>RANK: {rank} | FINAL SCORE: {st.session_state.score}</h3>
+            <h3 style="color:white;">FINAL REPUTATION: {st.session_state.score}</h3>
         </div>
     """, unsafe_allow_html=True)
     
-    st.subheader("🏆 TOP ACE PILOTS")
-    try:
-        # Fetch fresh leaderboard
-        leaderboard = conn.read(worksheet="Sheet1", ttl=0)
-        # Clean data and show top 5
-        top_5 = leaderboard.sort_values(by="Score", ascending=False).head(5)
-        st.table(top_5)
-    except Exception as e:
-        st.info("Leaderboard is synchronizing with Imperial Command...")
+    # LEADERBOARD SECTION
+    st.markdown("### 🏆 GALACTIC LEADERBOARD")
+    leader_container = st.container()
+    with leader_container:
+        try:
+            # Force refresh with ttl=0
+            lb_df = conn.read(worksheet="Sheet1", ttl=0)
+            # Ensure Score is numeric for sorting
+            lb_df['Score'] = pd.to_numeric(lb_df['Score'])
+            top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
+            # Use st.dataframe for a cleaner look in the dark theme
+            st.dataframe(top_5, use_container_width=True, hide_index=True)
+        except Exception as e:
+            st.error(f"Comms Jammed: Link to Leaderboard lost.")
 
     if st.button("REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
         st.rerun()
 
-# --- 6. SYSTEM ADMIN (RESTORED & SECURED) ---
-st.divider()
+# --- 6. SYSTEM ADMIN ---
 with st.expander("🛠️ System Admin"):
     admin_pass = st.text_input("Admin Override:", type="password")
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
-        st.success("Authenticated")
-        
-        # Adjust Speed
-        new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
-        if st.button("Save Speed"):
-            st.session_state.typing_speed = new_speed
-            st.rerun()
-
-        # Reset Board
+        new_speed = st.slider("Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
+        if st.button("Save Speed"): st.session_state.typing_speed = new_speed
         if st.button("🚨 RESET LEADERBOARD"):
-            conn = st.connection("gsheets", type=GSheetsConnection)
-            empty_df = pd.DataFrame(columns=["Pilot", "Score"])
-            conn.update(worksheet="Sheet1", data=empty_df)
-            st.warning("Leaderboard wiped.")
+            conn.update(worksheet="Sheet1", data=pd.DataFrame(columns=["Pilot", "Score"]))
+            st.experimental_rerun()
