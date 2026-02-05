@@ -114,7 +114,6 @@ elif st.session_state.lvl <= 5:
                 if st.session_state.halted: break
                 st.session_state.current_line_idx = idx 
                 
-                # RESTORED: Timeline Bar logic
                 timer_bar.progress((idx + 1) / total_lines, text=f"DEPLOYMENT TIMELINE: Scanning Line {idx+1}/{total_lines}")
                 
                 for char in line:
@@ -138,20 +137,23 @@ elif st.session_state.lvl <= 5:
                 st.error(msg)
 
 else:
-    # --- 5. CONDITIONAL FINALE (VADER VS YODA) ---
+    # --- 5. CONDITIONAL FINALE ---
     conn = st.connection("gsheets", type=GSheetsConnection)
     
     if not st.session_state.db_updated:
         try:
+            # Match headers from your screenshot: Pilot, Score
             df = conn.read(worksheet="Sheet1", ttl=0)
             new_row = pd.DataFrame([{"Pilot": st.session_state.pilot_name, "Score": st.session_state.score}])
             conn.update(worksheet="Sheet1", data=pd.concat([df, new_row], ignore_index=True))
             st.session_state.db_updated = True
-        except: pass
+        except Exception as e:
+            st.error(f"Sync Error: {e}")
 
     # FAILED MISSION (Score < 100)
     if st.session_state.score < 100:
-        st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/106H6aMvHlSk5G/giphy.gif")
+        # Fixed Vader GIF Link
+        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/106H6aMvHlSk5G/giphy.gif")
         st.markdown(f"""
             <div class="imperial-box">
                 <h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1>
@@ -163,7 +165,8 @@ else:
         """, unsafe_allow_html=True)
     # SUCCESS MISSION
     else:
-        st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif")
+        # Fixed Yoda GIF Link
+        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif")
         st.markdown(f"""
             <div class="certificate-box">
                 <h1>REPUBLIC COMMENDATION</h1>
@@ -177,10 +180,13 @@ else:
     st.markdown("### 🏆 GALACTIC TOP ACE PILOTS")
     try:
         lb_df = conn.read(worksheet="Sheet1", ttl=0)
-        lb_df = lb_df.dropna(subset=['Pilot', 'Score'])
-        lb_df['Score'] = pd.to_numeric(lb_df['Score'], errors='coerce')
-        top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
-        st.table(top_5)
+        if not lb_df.empty:
+            lb_df = lb_df.dropna(subset=['Pilot', 'Score'])
+            lb_df['Score'] = pd.to_numeric(lb_df['Score'], errors='coerce')
+            top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
+            st.table(top_5)
+        else:
+            st.info("Leaderboard is currently empty. Be the first!")
     except:
         st.error("Comms Jammed.")
 
