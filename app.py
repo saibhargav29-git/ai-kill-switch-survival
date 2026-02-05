@@ -4,8 +4,20 @@ import yaml
 import random
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+from streamlit_lottie import st_lottie
+import requests
 
 # --- 1. CORE LOGIC & DATA ---
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+# Alternative animations (Lottie JSON)
+lottie_success = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_968p9lmc.json") # BB-8
+lottie_fail = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_6sxyjyjj.json")    # Stormtrooper
+
 def load_challenges():
     try:
         with open("challenges.yaml", 'r') as f:
@@ -101,7 +113,8 @@ elif st.session_state.lvl <= 5:
             st.button("🚀 NEXT SECTOR", on_click=next_sector_reset)
 
     with col1:
-        st.subheader(st.session_state.current_threat['title'])
+        # DYNAMIC SECTOR TITLE
+        st.subheader(f"📡 SECTOR: {st.session_state.current_threat.get('title', 'Unknown Sector')}")
         timer_bar = st.empty()
         code_box = st.empty()
         
@@ -142,18 +155,15 @@ else:
     
     if not st.session_state.db_updated:
         try:
-            # Match headers from your screenshot: Pilot, Score
             df = conn.read(worksheet="Sheet1", ttl=0)
             new_row = pd.DataFrame([{"Pilot": st.session_state.pilot_name, "Score": st.session_state.score}])
             conn.update(worksheet="Sheet1", data=pd.concat([df, new_row], ignore_index=True))
             st.session_state.db_updated = True
-        except Exception as e:
-            st.error(f"Sync Error: {e}")
+        except: pass
 
-    # FAILED MISSION (Score < 100)
+    # FAILED MISSION
     if st.session_state.score < 100:
-        # Fixed Vader GIF Link
-        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/106H6aMvHlSk5G/giphy.gif")
+        st_lottie(lottie_fail, height=300, key="fail_anim")
         st.markdown(f"""
             <div class="imperial-box">
                 <h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1>
@@ -165,8 +175,7 @@ else:
         """, unsafe_allow_html=True)
     # SUCCESS MISSION
     else:
-        # Fixed Yoda GIF Link
-        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif")
+        st_lottie(lottie_success, height=300, key="success_anim")
         st.markdown(f"""
             <div class="certificate-box">
                 <h1>REPUBLIC COMMENDATION</h1>
@@ -180,13 +189,10 @@ else:
     st.markdown("### 🏆 GALACTIC TOP ACE PILOTS")
     try:
         lb_df = conn.read(worksheet="Sheet1", ttl=0)
-        if not lb_df.empty:
-            lb_df = lb_df.dropna(subset=['Pilot', 'Score'])
-            lb_df['Score'] = pd.to_numeric(lb_df['Score'], errors='coerce')
-            top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
-            st.table(top_5)
-        else:
-            st.info("Leaderboard is currently empty. Be the first!")
+        lb_df = lb_df.dropna(subset=['Pilot', 'Score'])
+        lb_df['Score'] = pd.to_numeric(lb_df['Score'], errors='coerce')
+        top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
+        st.table(top_5)
     except:
         st.error("Comms Jammed.")
 
