@@ -1,119 +1,118 @@
 import streamlit as st
 import time
+import random
+import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 
-# --- STAGE 1: HARDCORE SCI-FI THEMEING ---
-st.set_page_config(page_title="Endor Kill-Switch", layout="wide", initial_sidebar_state="collapsed")
+# --- 1. IMPERIAL TERMINAL UI ---
+st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
-# This CSS forces the background to be black and text to be neon green
 st.markdown("""
     <style>
-    /* Force background and text colors */
     .stApp {
-        background-color: #000000 !important;
-        color: #00FF41 !important;
+        background-color: #05080a !important;
+        background-image: radial-gradient(circle, #0a1f0a 1%, #05080a 100%);
+        color: #00ff41 !important;
     }
-    /* Style all text to look like a terminal */
-    p, h1, h2, h3, span, div {
+    /* CRT Scanline Effect */
+    .stApp::before {
+        content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                    linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+        z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+    }
+    h1, h2, h3, .stMetric, span, p {
+        color: #00ff41 !important;
         font-family: 'Courier New', Courier, monospace !important;
-        color: #00FF41 !important;
+        text-shadow: 0 0 8px #00ff41;
     }
-    /* The Kill Switch Button Style */
     .stButton>button {
-        background: radial-gradient(circle, #ff0000 0%, #800000 100%) !important;
+        background: #8b0000 !important;
+        border: 2px solid #ff0000 !important;
         color: white !important;
-        border: 2px solid #330000 !important;
-        height: 5em !important;
-        width: 100% !important;
-        font-weight: bold !important;
-        box-shadow: 0 0 20px #ff0000 !important;
-    }
-    /* Terminal Block Style */
-    code {
-        color: #00FF41 !important;
-        background-color: #0a0a0a !important;
+        box-shadow: 0 0 15px #ff0000 !important;
+        width: 100%; font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SCI-FI LEVEL DATA ---
-LEVELS = [
-    {
-        "title": "🛸 PHASE 1: DROID ASSEMBLY LINE",
-        "code": "def assemble_droid(unit_id):\n    import sys\n    import droid_control_v2\n    # ALERT: Unauthorized Uplink Detected\n    import imperial_uplink_secure  # <--- MALICIOUS TYPOSQUAT\n    droid_control_v2.init(unit_id)\n    print('Droid online...')",
-        "is_threat": True,
-        "explanation": "'imperial_uplink_secure' is a malicious package designed to hijack droid units!"
-    },
-    {
-        "title": "🛡️ PHASE 2: SHIELD GENERATOR CALIBRATION",
-        "code": "def adjust_shields(power_level):\n    if power_level > 9000:\n        # WARNING: Code injection detected\n        if request.headers.get('Sith-Token'):\n            return os.system('/bin/sh') # <--- RCE EXPLOIT\n    return True",
-        "is_threat": True,
-        "explanation": "The AI added a Remote Code Execution (RCE) backdoor for Sith Command!"
-    },
-    {
-        "title": "🌲 PHASE 3: ENDOR FOREST SCAN",
-        "code": "import deprecated_starship_lib  # CVE-2024-9999\n\ndef scan_forest_moon():\n    # Vulnerability is UNREACHABLE\n    print('No Ewoks detected.')\n    return None",
-        "is_threat": False,
-        "explanation": "FALSE ALARM! That library is vulnerable but NOT REACHABLE. You just halted production for no reason!"
-    }
+# --- 2. DATA POOL ---
+THREAT_POOL = [
+    {"title": "🛸 DROID ASSEMBLY", "code": "import sys\nimport droid_v2\nimport imperial_uplink_secure # <--- TYPOSQUAT", "threat": True, "info": "Typosquat! 'imperial_uplink' is a tracking bug."},
+    {"title": "🛡️ SHIELD CONTROL", "code": "def calibrate(p):\n  if header == 'Sith-Token':\n    os.system('/bin/sh') # <--- RCE", "threat": True, "info": "Exploit! AI added a backdoor for Sith Command."},
+    {"title": "🌲 FOREST SCAN", "code": "import old_lib_v1 # CVE-2024\ndef scan():\n  # Vulnerability is UNREACHABLE\n  print('Safe')", "threat": False, "info": "Noise! Library is vulnerable but NOT REACHABLE."},
+    {"title": "🛰️ ORBITAL SYNC", "code": "def sync():\n  # Static analysis noise\n  x = 'hardcoded_dummy_key'\n  return True", "threat": False, "info": "False Positive! Dummy keys are not real secrets."}
 ]
 
-# --- SESSION STATE ---
-if 'lvl' not in st.session_state: st.session_state.lvl = 0
+# --- 3. STATE MGMT ---
+if 'lvl' not in st.session_state: st.session_state.lvl = 1
 if 'score' not in st.session_state: st.session_state.score = 0
-if 'game_over' not in st.session_state: st.session_state.game_over = False
+if 'halted' not in st.session_state: st.session_state.halted = False
+if 'current_threat' not in st.session_state: st.session_state.current_threat = random.choice(THREAT_POOL)
 
-# --- UI HEADER ---
-st.title("📟 ENDOR TERMINAL: KILL-SWITCH CHALLENGE")
-c1, c2, c3 = st.columns(3)
-c1.metric("SECTOR", f"{st.session_state.lvl + 1} / 3")
-c2.metric("REPUTATION", st.session_state.score)
-c3.text("ENCRYPTED CONNECTION: ACTIVE")
+# --- 4. GAMEPLAY ---
+if st.session_state.lvl <= 3:
+    st.title("📟 IMPERIAL TERMINAL: SECTOR CONTROL")
+    col1, col2 = st.columns([3, 1])
 
-st.divider()
+    with col1:
+        st.subheader(st.session_state.current_threat["title"])
+        code_box = st.empty()
+        if not st.session_state.halted:
+            lines = st.session_state.current_threat["code"].split('\n')
+            full_text = ""
+            for line in lines:
+                full_text += line + "\n"
+                code_box.code(full_text, language="python")
+                time.sleep(0.4)
+            st.warning("⚠️ DEPLOYMENT FINISHED. REACT NOW!")
 
-# --- MAIN GAME AREA ---
-col_left, col_right = st.columns([2, 1])
+    with col2:
+        st.write("### COMMANDS")
+        if st.button("🛑 EMERGENCY KILL-SWITCH"):
+            st.session_state.halted = True
+            if st.session_state.current_threat["threat"]:
+                st.success("🎯 TARGET NEUTRALIZED")
+                st.session_state.score += 100
+            else:
+                st.error("❌ REPUTATION LOSS: FALSE ALARM")
+                st.session_state.score -= 50
+            st.info(st.session_state.current_threat["info"])
 
-with col_left:
-    st.subheader(LEVELS[st.session_state.lvl]["title"])
-    code_area = st.empty()
-    
-    # Only type the code if the game isn't over for this level
-    if not st.session_state.game_over:
-        full_code = LEVELS[st.session_state.lvl]["code"]
-        lines = full_code.split('\n')
-        current_view = ""
-        for line in lines:
-            current_view += line + "\n"
-            code_area.code(current_view, language="python")
-            time.sleep(0.5) # The "AI" Speed
-        st.warning("⚠️ DEPLOYMENT FINISHED. Did you catch it?")
-
-with col_right:
-    st.write("### INTERCEPTOR")
-    if st.button("🛑 ACTIVATE KILL-SWITCH"):
-        st.session_state.game_over = True
-        current = LEVELS[st.session_state.lvl]
-        
-        if current["is_threat"]:
-            st.success("🎯 TARGET NEUTRALIZED!")
-            st.session_state.score += 100
-        else:
-            st.error("❗ SYSTEM ERROR: FALSE POSITIVE")
-            st.session_state.score -= 50
-        
-        st.info(f"INTEL: {current['explanation']}")
-        
-        if st.session_state.lvl < 2:
-            if st.button("MOVE TO NEXT SECTOR"):
+        if st.session_state.halted:
+            if st.button("🚀 NEXT SECTOR"):
                 st.session_state.lvl += 1
-                st.session_state.game_over = False
+                st.session_state.current_threat = random.choice(THREAT_POOL)
+                st.session_state.halted = False
                 st.rerun()
-        else:
-            st.balloons()
-            st.write("## 🏆 MISSION COMPLETE")
-            if st.button("REBOOT TERMINAL"):
-                st.session_state.lvl = 0
-                st.session_state.score = 0
-                st.session_state.game_over = False
-                st.rerun()
+    
+    st.divider()
+    st.metric("SCORE / REPUTATION", st.session_state.score)
+
+# --- 5. GLOBAL LEADERBOARD (POST-MISSION) ---
+else:
+    st.title("🏆 MISSION COMPLETE: IMPERIAL ARCHIVES")
+    st.balloons()
+    
+    # Connection to Google Sheets
+    try:
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        existing_data = conn.read(ttl=0)
+    except:
+        existing_data = pd.DataFrame(columns=["Pilot", "Score"])
+
+    with st.form("archive_form"):
+        name = st.text_input("Enter Pilot Callsign:")
+        if st.form_submit_button("UPLOAD DATA"):
+            new_row = pd.DataFrame([{"Pilot": name, "Score": st.session_state.score}])
+            updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+            conn.update(data=updated_df)
+            st.success("Data transmitted to Endor Command!")
+
+    st.subheader("🌌 TOP GUARDIANS OF ENDOR")
+    st.dataframe(existing_data.sort_values(by="Score", ascending=False).head(10), use_container_width=True)
+    
+    if st.button("REBOOT SYSTEM"):
+        st.session_state.lvl = 1
+        st.session_state.score = 0
+        st.rerun()
