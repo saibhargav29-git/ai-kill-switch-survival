@@ -11,7 +11,6 @@ def load_challenges():
         with open("challenges.yaml", 'r') as f:
             return yaml.load(f, Loader=yaml.SafeLoader)['challenges']
     except:
-        # Fallback if YAML is missing
         return [{"title": "SYSTEM ERROR", "threat": True, "bad_line": 0, "info": "YAML Missing", "code": "import os\nos.system('malicious')"}]
 
 # Initialize Session States
@@ -50,6 +49,7 @@ st.markdown(f"""
         font-size: 22px !important;
     }}
     .certificate-box {{ border: 5px double #00ff41; padding: 40px; background-color: #0a140a; text-align: center; border-radius: 15px; box-shadow: 0 0 40px #00ff41; margin: 20px auto; }}
+    .imperial-box {{ border: 5px solid #ff0000; padding: 40px; background-color: #1a0000; text-align: center; border-radius: 5px; box-shadow: 0 0 40px #ff0000; margin: 20px auto; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -57,8 +57,6 @@ st.markdown(f"""
 def handle_kill_switch():
     st.session_state.halted = True
     challenge = st.session_state.current_threat
-    
-    # Check: Did the threat actually appear on screen yet?
     has_threat_appeared = challenge.get("threat") and st.session_state.current_line_idx >= challenge.get("bad_line", 0)
 
     if has_threat_appeared:
@@ -117,7 +115,8 @@ elif st.session_state.lvl <= 5:
                 if st.session_state.halted: break
                 st.session_state.current_line_idx = idx 
                 
-                timer_bar.progress((idx + 1) / total_lines, text=f"Scanning Line {idx+1}...")
+                # RESTORED: Timeline Bar with Deployment text
+                timer_bar.progress((idx + 1) / total_lines, text=f"DEPLOYMENT TIMELINE: Scanning Line {idx+1}/{total_lines}")
                 
                 for char in line:
                     if st.session_state.halted: break
@@ -140,9 +139,7 @@ elif st.session_state.lvl <= 5:
                 st.error(msg)
 
 else:
-    # --- 5. CERTIFICATE & LEADERBOARD ---
-    st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKVUn7iM8FMEU24/giphy.gif" width="300"></div>', unsafe_allow_html=True)
-    
+    # --- 5. CONDITIONAL FINALE (IMPERIAL VS REPUBLIC) ---
     conn = st.connection("gsheets", type=GSheetsConnection)
     
     if not st.session_state.db_updated:
@@ -152,16 +149,33 @@ else:
             updated_df = pd.concat([df, new_row], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
             st.session_state.db_updated = True
-        except Exception as e:
-            st.error(f"Uplink Error: {e}")
+        except: pass
 
-    st.markdown(f"""
-        <div class="certificate-box">
-            <h1>MISSION COMPLETE</h1>
-            <h2>{st.session_state.pilot_name.upper()}</h2>
-            <h3>FINAL SCORE: {st.session_state.score}</h3>
-        </div>
-    """, unsafe_allow_html=True)
+    # PERFORMANCE LOGIC
+    if st.session_state.score < 100:
+        # VADER FAILURE
+        st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM25idjN6ZTVueWp4Ym13ZzR2cXA5eGZueXF4ZzR6ZzR6ZzR6ZzR6JmZwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/L4TNHVeOPuWr6/giphy.gif" width="400"></div>', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="imperial-box">
+                <h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1>
+                <h2 style="color:white;">{st.session_state.pilot_name.upper()}</h2>
+                <p style="color:#ff4b4b; font-size:1.2em;">"You have failed me for the last time."</p>
+                <hr style="border: 1px solid #ff0000;">
+                <h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        # YODA/REPUBLIC SUCCESS
+        st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif" width="400"></div>', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="certificate-box">
+                <h1>REPUBLIC COMMENDATION</h1>
+                <h2>{st.session_state.pilot_name.upper()}</h2>
+                <p style="color:#00ff41; font-size:1.2em;">"The Force is strong with you."</p>
+                <hr style="border: 1px solid #00ff41;">
+                <h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3>
+            </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("### 🏆 GALACTIC TOP ACE PILOTS")
     try:
