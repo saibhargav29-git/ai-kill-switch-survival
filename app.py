@@ -44,7 +44,7 @@ elif st.session_state.status == "fail":
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {bg_color} !important; transition: 0.8s ease-in-out; }}
+    .stApp {{ background-color: {bg_color} !important; transition: 0.5s; }}
     h1, h2, h3, p, .stMetric {{ color: {text_color} !important; font-family: 'Courier New', monospace; }}
     .stButton>button {{ 
         background: radial-gradient(circle, #ff0000 0%, #8b0000 100%) !important; 
@@ -52,12 +52,13 @@ st.markdown(f"""
         border: 3px solid #ff4b4b !important; box-shadow: 0 0 20px #ff0000;
         font-size: 22px !important;
     }}
+    .stProgress > div > div > div > div {{ background-color: {text_color} !important; }}
     .certificate-box {{ border: 5px double #00ff41; padding: 40px; background-color: #0a140a; text-align: center; border-radius: 15px; box-shadow: 0 0 40px #00ff41; margin: 20px auto; }}
     .force-text {{ font-style: italic; color: #fff; text-shadow: 0 0 10px #00ff41; font-size: 1.5em; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. UPDATED CALLBACKS (State Cleaning) ---
+# --- 3. CALLBACKS ---
 def handle_kill_switch():
     st.session_state.halted = True
     st.session_state.panic = False
@@ -69,7 +70,6 @@ def handle_kill_switch():
         st.session_state.status = "fail"
 
 def next_sector_reset():
-    # EXPLICITLY CLEAR OLD DATA
     st.session_state.lvl += 1
     st.session_state.current_threat = random.choice(st.session_state.challenge_pool)
     st.session_state.halted = False
@@ -96,7 +96,6 @@ elif st.session_state.lvl <= 5:
         st.metric("SECTOR", f"{st.session_state.lvl}/5")
         st.metric("REPUTATION", st.session_state.score)
         st.divider()
-        # THE BUTTON IS NOW ALWAYS HERE (Not waiting for loop)
         if not st.session_state.halted:
             st.button("🛑 KILL-SWITCH", on_click=handle_kill_switch, key="ks_btn")
         else:
@@ -104,17 +103,24 @@ elif st.session_state.lvl <= 5:
 
     with col1:
         st.markdown(f"### {st.session_state.current_threat['title']}")
+        timer_placeholder = st.empty()
         code_box = st.empty()
-        status_box = st.empty() # Placeholder for results to prevent ghosting
+        status_box = st.empty()
         
         if not st.session_state.halted and not st.session_state.panic:
             full_text = ""
             lines = st.session_state.current_threat["code"].split('\n')
+            total_chars = len(st.session_state.current_threat["code"])
+            current_chars = 0
+            
             for line in lines:
                 if st.session_state.halted: break
                 for char in line:
                     if st.session_state.halted: break
                     full_text += char
+                    current_chars += 1
+                    progress = min(current_chars / total_chars, 1.0)
+                    timer_placeholder.progress(progress, text="⏳ DEPLOYING CODE...")
                     code_box.code(full_text + "█", language="python")
                     time.sleep(st.session_state.typing_speed)
                 full_text += "\n"
@@ -124,22 +130,23 @@ elif st.session_state.lvl <= 5:
                 st.session_state.panic = True
                 st.rerun()
         else:
-            # INTERFACE AFTER BUTTON CLICK OR PANIC
+            timer_placeholder.empty()
             code_box.code(st.session_state.current_threat["code"], language="python")
-            
             if st.session_state.status == "success":
                 status_box.success(f"🎯 NEUTRALIZED: {st.session_state.current_threat['info']}")
                 st.markdown('<p class="force-text">The Force is strong with this pilot!</p>', unsafe_allow_html=True)
             elif st.session_state.status == "fail":
-                status_box.error("❌ MISFIRE! You disabled a safe system.")
+                status_box.error("❌ MISFIRE! System was safe.")
             elif st.session_state.panic:
-                status_box.warning("⚠️ DEPLOYMENT FINISHED. Did you spot the threat?")
+                status_box.warning("⚠️ DEPLOYMENT FINISHED. Threat active in system!")
 
 else:
-    # --- 5. CERTIFICATE (Perserved) ---
+    # --- 5. CERTIFICATE & LEADERBOARD ---
     conn = st.connection("gsheets", type=GSheetsConnection)
+    
     if not st.session_state.db_updated:
         try:
+            # TTL=0 ensures we don't read cached data from the previous player
             df = conn.read(worksheet="Sheet1", ttl=0)
             new_row = pd.DataFrame([{"Pilot": st.session_state.pilot_name, "Score": st.session_state.score}])
             updated_df = pd.concat([df, new_row], ignore_index=True)
@@ -155,28 +162,40 @@ else:
             <h2>{st.session_state.pilot_name.upper()}</h2>
             <p class="force-text">"The Force is strong with this pilot."</p>
             <hr style="border: 1px solid #00ff41;">
-            <h3>RANK: {rank}</h3>
-            <h3>FINAL REPUTATION: {st.session_state.score}</h3>
+            <h3>RANK: {rank} | FINAL SCORE: {st.session_state.score}</h3>
         </div>
     """, unsafe_allow_html=True)
     
     st.subheader("🏆 TOP ACE PILOTS")
     try:
+        # Fetch fresh leaderboard
         leaderboard = conn.read(worksheet="Sheet1", ttl=0)
-        st.table(leaderboard.sort_values(by="Score", ascending=False).head(5))
-    except: st.info("Leaderboard syncing...")
+        # Clean data and show top 5
+        top_5 = leaderboard.sort_values(by="Score", ascending=False).head(5)
+        st.table(top_5)
+    except Exception as e:
+        st.info("Leaderboard is synchronizing with Imperial Command...")
 
     if st.button("REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
         st.rerun()
 
-# --- 6. ADMIN ---
+# --- 6. SYSTEM ADMIN (RESTORED & SECURED) ---
+st.divider()
 with st.expander("🛠️ System Admin"):
     admin_pass = st.text_input("Admin Override:", type="password")
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
+        st.success("Authenticated")
+        
+        # Adjust Speed
         new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
         if st.button("Save Speed"):
             st.session_state.typing_speed = new_speed
+            st.rerun()
+
+        # Reset Board
         if st.button("🚨 RESET LEADERBOARD"):
             conn = st.connection("gsheets", type=GSheetsConnection)
-            conn.update(worksheet="Sheet1", data=pd.DataFrame(columns=["Pilot", "Score"]))
+            empty_df = pd.DataFrame(columns=["Pilot", "Score"])
+            conn.update(worksheet="Sheet1", data=empty_df)
+            st.warning("Leaderboard wiped.")
