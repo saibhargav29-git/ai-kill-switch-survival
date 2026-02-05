@@ -13,7 +13,6 @@ def load_challenges():
     except:
         return [{"title": "SYSTEM ERROR", "threat": True, "bad_line": 0, "info": "YAML Missing", "code": "import os\nos.system('malicious')"}]
 
-# Initialize Session States
 if 'lvl' not in st.session_state: st.session_state.lvl = 1
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'halted' not in st.session_state: st.session_state.halted = False
@@ -115,7 +114,7 @@ elif st.session_state.lvl <= 5:
                 if st.session_state.halted: break
                 st.session_state.current_line_idx = idx 
                 
-                # RESTORED: Timeline Bar with Deployment text
+                # RESTORED: Timeline Bar logic
                 timer_bar.progress((idx + 1) / total_lines, text=f"DEPLOYMENT TIMELINE: Scanning Line {idx+1}/{total_lines}")
                 
                 for char in line:
@@ -139,22 +138,20 @@ elif st.session_state.lvl <= 5:
                 st.error(msg)
 
 else:
-    # --- 5. CONDITIONAL FINALE (IMPERIAL VS REPUBLIC) ---
+    # --- 5. CONDITIONAL FINALE (VADER VS YODA) ---
     conn = st.connection("gsheets", type=GSheetsConnection)
     
     if not st.session_state.db_updated:
         try:
             df = conn.read(worksheet="Sheet1", ttl=0)
             new_row = pd.DataFrame([{"Pilot": st.session_state.pilot_name, "Score": st.session_state.score}])
-            updated_df = pd.concat([df, new_row], ignore_index=True)
-            conn.update(worksheet="Sheet1", data=updated_df)
+            conn.update(worksheet="Sheet1", data=pd.concat([df, new_row], ignore_index=True))
             st.session_state.db_updated = True
         except: pass
 
-    # PERFORMANCE LOGIC
+    # FAILED MISSION (Score < 100)
     if st.session_state.score < 100:
-        # VADER FAILURE
-        st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM25idjN6ZTVueWp4Ym13ZzR2cXA5eGZueXF4ZzR6ZzR6ZzR6ZzR6JmZwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/L4TNHVeOPuWr6/giphy.gif" width="400"></div>', unsafe_allow_html=True)
+        st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/106H6aMvHlSk5G/giphy.gif")
         st.markdown(f"""
             <div class="imperial-box">
                 <h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1>
@@ -164,9 +161,9 @@ else:
                 <h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3>
             </div>
         """, unsafe_allow_html=True)
+    # SUCCESS MISSION
     else:
-        # YODA/REPUBLIC SUCCESS
-        st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif" width="400"></div>', unsafe_allow_html=True)
+        st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif")
         st.markdown(f"""
             <div class="certificate-box">
                 <h1>REPUBLIC COMMENDATION</h1>
@@ -185,7 +182,7 @@ else:
         top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
         st.table(top_5)
     except:
-        st.error("Comms Jammed: Link to Leaderboard lost.")
+        st.error("Comms Jammed.")
 
     if st.button("REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
@@ -197,19 +194,15 @@ with st.expander("🛠️ System Admin"):
     admin_pass = st.text_input("Admin Override:", type="password")
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
         st.success("Authenticated")
-        
         new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
         if st.button("Save Speed Settings"):
             st.session_state.typing_speed = new_speed
             st.rerun() 
-
         st.divider()
-
         if st.button("🚨 RESET LEADERBOARD (DANGER)"):
             try:
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                empty_df = pd.DataFrame(columns=["Pilot", "Score"])
-                conn.update(worksheet="Sheet1", data=empty_df)
+                conn.update(worksheet="Sheet1", data=pd.DataFrame(columns=["Pilot", "Score"]))
                 st.warning("Leaderboard wiped.")
                 time.sleep(1) 
                 st.rerun() 
