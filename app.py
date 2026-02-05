@@ -187,12 +187,32 @@ else:
         st.session_state.clear()
         st.rerun()
 
-# --- 6. SYSTEM ADMIN ---
+# --- 6. SYSTEM ADMIN (RESTORED WITH CORRECT RERUN) ---
+st.divider()
 with st.expander("🛠️ System Admin"):
     admin_pass = st.text_input("Admin Override:", type="password")
+    
+    # Check password from secrets
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
-        new_speed = st.slider("Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
-        if st.button("Save Speed"): st.session_state.typing_speed = new_speed
-        if st.button("🚨 RESET LEADERBOARD"):
-            conn.update(worksheet="Sheet1", data=pd.DataFrame(columns=["Pilot", "Score"]))
-            st.experimental_rerun()
+        st.success("Imperial Command Authenticated")
+        
+        # 1. Adjust Typing Speed
+        new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
+        if st.button("Save Speed Settings"):
+            st.session_state.typing_speed = new_speed
+            st.rerun()  # Forces the app to update the typing rhythm immediately
+
+        st.divider()
+
+        # 2. Reset Board
+        if st.button("🚨 RESET LEADERBOARD (DANGER)"):
+            try:
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                # Create a fresh empty dataframe with correct headers
+                empty_df = pd.DataFrame(columns=["Pilot", "Score"])
+                conn.update(worksheet="Sheet1", data=empty_df)
+                st.warning("Leaderboard wiped successfully.")
+                time.sleep(1) # Give user a moment to see the message
+                st.rerun()  # Refresh to show the empty table
+            except Exception as e:
+                st.error(f"Failed to reset: {e}")
