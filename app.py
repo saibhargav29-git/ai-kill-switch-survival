@@ -9,14 +9,17 @@ import requests
 
 # --- 1. CORE LOGIC & DATA ---
 def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
         return None
-    return r.json()
 
-# Alternative animations (Lottie JSON)
-lottie_success = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_968p9lmc.json") # BB-8
-lottie_fail = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_6sxyjyjj.json")    # Stormtrooper
+# High-Quality Star Wars Lottie Animations
+lottie_success = load_lottieurl("https://lottie.host/86d7f0e3-9831-4876-8051-7890e0c90c79/U6D3X5lAon.json") # BB-8 Droid
+lottie_fail = load_lottieurl("https://lottie.host/89047978-75c1-4b16-953e-5f3a0279d63f/O0rT7tMvjN.json")    # Darth Vader
 
 def load_challenges():
     try:
@@ -45,14 +48,28 @@ if 'current_threat' not in st.session_state:
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
 bg_color = "#05080a"
-if st.session_state.panic: bg_color = "#440000"
-elif st.session_state.status == "success": bg_color = "#0a1f0a"
-elif st.session_state.status == "fail": bg_color = "#2b0505"
+sector_text_color = "#00ff41" # Default Green
+
+# Check if the threat is currently visible on the screen
+threat_is_live = (st.session_state.current_threat.get("threat") and 
+                  st.session_state.current_line_idx >= st.session_state.current_threat.get("bad_line", 0))
+
+if st.session_state.panic: 
+    bg_color = "#440000"
+elif st.session_state.status == "success": 
+    bg_color = "#0a1f0a"
+elif st.session_state.status == "fail": 
+    bg_color = "#2b0505"
+
+# If threat is live, make the sector title glow red
+if threat_is_live and not st.session_state.halted:
+    sector_text_color = "#ff0000; text-shadow: 0 0 10px #ff0000;"
 
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color} !important; transition: 0.5s; }}
     h1, h2, h3, p, .stMetric {{ color: #00ff41 !important; font-family: 'Courier New', monospace; }}
+    .sector-title {{ color: {sector_text_color}; font-size: 1.8rem; font-weight: bold; transition: 0.3s; }}
     .stButton>button {{ 
         background: radial-gradient(circle, #ff0000 0%, #8b0000 100%) !important; 
         color: white !important; width: 100%; height: 6em; font-weight: bold; 
@@ -113,8 +130,10 @@ elif st.session_state.lvl <= 5:
             st.button("🚀 NEXT SECTOR", on_click=next_sector_reset)
 
     with col1:
-        # DYNAMIC SECTOR TITLE
-        st.subheader(f"📡 SECTOR: {st.session_state.current_threat.get('title', 'Unknown Sector')}")
+        # FIXED: Dynamic Sector Title wrapped in a custom CSS class for per-level updates
+        sector_name = st.session_state.current_threat.get('title', 'Unknown Sector')
+        st.markdown(f'<div class="sector-title">📡 SECTOR: {sector_name}</div>', unsafe_allow_html=True)
+        
         timer_bar = st.empty()
         code_box = st.empty()
         
@@ -129,6 +148,10 @@ elif st.session_state.lvl <= 5:
                 
                 timer_bar.progress((idx + 1) / total_lines, text=f"DEPLOYMENT TIMELINE: Scanning Line {idx+1}/{total_lines}")
                 
+                # Check if we just hit the bad line to trigger the red title UI
+                if st.session_state.current_threat.get("threat") and idx == st.session_state.current_threat.get("bad_line"):
+                    st.rerun()
+
                 for char in line:
                     if st.session_state.halted: break
                     full_text += char
@@ -161,9 +184,9 @@ else:
             st.session_state.db_updated = True
         except: pass
 
-    # FAILED MISSION
+    # FAILED MISSION (Score < 100)
     if st.session_state.score < 100:
-        st_lottie(lottie_fail, height=300, key="fail_anim")
+        st_lottie(lottie_fail, height=300, key="vader_anim")
         st.markdown(f"""
             <div class="imperial-box">
                 <h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1>
@@ -175,7 +198,7 @@ else:
         """, unsafe_allow_html=True)
     # SUCCESS MISSION
     else:
-        st_lottie(lottie_success, height=300, key="success_anim")
+        st_lottie(lottie_success, height=300, key="bb8_anim")
         st.markdown(f"""
             <div class="certificate-box">
                 <h1>REPUBLIC COMMENDATION</h1>
