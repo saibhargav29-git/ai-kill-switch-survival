@@ -4,31 +4,14 @@ import yaml
 import random
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-from streamlit_lottie import st_lottie
-import requests
 
 # --- 1. CORE LOGIC & DATA ---
-def load_lottieurl(url: str):
-    """Safe loader for Lottie animations to prevent app crashes"""
-    try:
-        r = requests.get(url, timeout=5)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except Exception:
-        return None
-
-# Reliable Star Wars Lottie URLs
-# BB-8 (Success) and Darth Vader/Stormtrooper themed (Fail)
-lottie_success = load_lottieurl("https://assets8.lottiefiles.com/private_files/lf30_ig9hzpnd.json") 
-lottie_fail = load_lottieurl("https://assets1.lottiefiles.com/packages/lf20_6sxyjyjj.json")
-
 def load_challenges():
     try:
         with open("challenges.yaml", 'r') as f:
             return yaml.load(f, Loader=yaml.SafeLoader)['challenges']
     except:
-        return [{"title": "CORE REPL", "threat": True, "bad_line": 0, "info": "YAML Missing", "code": "import os\nos.system('malicious')"}]
+        return [{"title": "SYSTEM ERROR", "threat": True, "bad_line": 0, "info": "YAML Missing", "code": "import os\nos.system('malicious')"}]
 
 if 'lvl' not in st.session_state: st.session_state.lvl = 1
 if 'score' not in st.session_state: st.session_state.score = 0
@@ -50,23 +33,14 @@ if 'current_threat' not in st.session_state:
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
 bg_color = "#05080a"
-sector_text_color = "#00ff41"
-
-threat_is_live = (st.session_state.current_threat.get("threat") and 
-                  st.session_state.current_line_idx >= st.session_state.current_threat.get("bad_line", 0))
-
 if st.session_state.panic: bg_color = "#440000"
 elif st.session_state.status == "success": bg_color = "#0a1f0a"
 elif st.session_state.status == "fail": bg_color = "#2b0505"
-
-if threat_is_live and not st.session_state.halted:
-    sector_text_color = "#ff0000; text-shadow: 0 0 15px #ff0000;"
 
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color} !important; transition: 0.5s; }}
     h1, h2, h3, p, .stMetric {{ color: #00ff41 !important; font-family: 'Courier New', monospace; }}
-    .sector-header {{ color: {sector_text_color}; font-size: 2rem; font-weight: bold; margin-bottom: 10px; }}
     .stButton>button {{ 
         background: radial-gradient(circle, #ff0000 0%, #8b0000 100%) !important; 
         color: white !important; width: 100%; height: 6em; font-weight: bold; 
@@ -78,17 +52,23 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. CALLBACKS ---
+# --- 3. LINE-AWARE CALLBACK ---
 def handle_kill_switch():
     st.session_state.halted = True
     challenge = st.session_state.current_threat
-    if threat_is_live:
+    has_threat_appeared = challenge.get("threat") and st.session_state.current_line_idx >= challenge.get("bad_line", 0)
+
+    if has_threat_appeared:
         st.session_state.score += 100
         st.session_state.status = "success"
+    elif challenge.get("threat") and not has_threat_appeared:
+        st.session_state.score -= 25
+        st.session_state.status = "fail"
+        st.session_state.info_override = "TOO EARLY! The malicious code hadn't manifested yet."
     else:
         st.session_state.score -= 50
         st.session_state.status = "fail"
-        st.session_state.info_override = "FALSE ALARM! System was clean."
+        st.session_state.info_override = "FALSE ALARM! This system was clean."
 
 def next_sector_reset():
     st.session_state.lvl += 1
@@ -121,10 +101,7 @@ elif st.session_state.lvl <= 5:
             st.button("🚀 NEXT SECTOR", on_click=next_sector_reset)
 
     with col1:
-        # CLEAN SECTOR HEADER - Fixed "Sector: Sector:" issue
-        clean_title = st.session_state.current_threat.get('title', 'Unknown Sector').replace("SECTOR:", "").strip()
-        st.markdown(f'<div class="sector-header">📡 SECTOR: {clean_title}</div>', unsafe_allow_html=True)
-        
+        st.subheader(st.session_state.current_threat['title'])
         timer_bar = st.empty()
         code_box = st.empty()
         
@@ -137,12 +114,8 @@ elif st.session_state.lvl <= 5:
                 if st.session_state.halted: break
                 st.session_state.current_line_idx = idx 
                 
-                timer_bar.progress((idx + 1) / total_lines, text=f"SCANNING: Line {idx+1}/{total_lines}")
+                timer_bar.progress((idx + 1) / total_lines, text=f"DEPLOYMENT TIMELINE: Scanning Line {idx+1}/{total_lines}")
                 
-                # Dynamic re-run to trigger the Red Glowing Title if we hit the bad line
-                if st.session_state.current_threat.get("threat") and idx == st.session_state.current_threat.get("bad_line"):
-                    st.rerun()
-
                 for char in line:
                     if st.session_state.halted: break
                     full_text += char
@@ -164,35 +137,58 @@ elif st.session_state.lvl <= 5:
                 st.error(msg)
 
 else:
-    # --- 5. FINALE ---
+    # --- 5. CONDITIONAL FINALE ---
     conn = st.connection("gsheets", type=GSheetsConnection)
+    
     if not st.session_state.db_updated:
         try:
+            # Match headers from your screenshot: Pilot, Score
             df = conn.read(worksheet="Sheet1", ttl=0)
             new_row = pd.DataFrame([{"Pilot": st.session_state.pilot_name, "Score": st.session_state.score}])
             conn.update(worksheet="Sheet1", data=pd.concat([df, new_row], ignore_index=True))
             st.session_state.db_updated = True
-        except: pass
+        except Exception as e:
+            st.error(f"Sync Error: {e}")
 
-    # Score < 100 is Imperial Defeat
+    # FAILED MISSION (Score < 100)
     if st.session_state.score < 100:
-        if lottie_fail: st_lottie(lottie_fail, height=300, key="vader_final")
-        else: st.image("https://media.giphy.com/media/106H6aMvHlSk5G/giphy.gif") # Fallback
-        
-        st.markdown(f'<div class="imperial-box"><h1>IMPERIAL OCCUPATION</h1><h2>{st.session_state.pilot_name.upper()}</h2><p>"You have failed me for the last time."</p><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
+        # Fixed Vader GIF Link
+        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/106H6aMvHlSk5G/giphy.gif")
+        st.markdown(f"""
+            <div class="imperial-box">
+                <h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1>
+                <h2 style="color:white;">{st.session_state.pilot_name.upper()}</h2>
+                <p style="color:#ff4b4b; font-size:1.2em;">"You have failed me for the last time."</p>
+                <hr style="border: 1px solid #ff0000;">
+                <h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3>
+            </div>
+        """, unsafe_allow_html=True)
+    # SUCCESS MISSION
     else:
-        if lottie_success: st_lottie(lottie_success, height=300, key="bb8_final")
-        else: st.image("https://media.giphy.com/media/8hMD9YakVza3452Spu/giphy.gif") # Fallback
-        
-        st.markdown(f'<div class="certificate-box"><h1>REPUBLIC COMMENDATION</h1><h2>{st.session_state.pilot_name.upper()}</h2><p>"The Force is strong with you."</p><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
+        # Fixed Yoda GIF Link
+        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif")
+        st.markdown(f"""
+            <div class="certificate-box">
+                <h1>REPUBLIC COMMENDATION</h1>
+                <h2>{st.session_state.pilot_name.upper()}</h2>
+                <p style="color:#00ff41; font-size:1.2em;">"The Force is strong with you."</p>
+                <hr style="border: 1px solid #00ff41;">
+                <h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3>
+            </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("### 🏆 GALACTIC TOP ACE PILOTS")
     try:
         lb_df = conn.read(worksheet="Sheet1", ttl=0)
-        lb_df = lb_df.dropna(subset=['Pilot', 'Score'])
-        lb_df['Score'] = pd.to_numeric(lb_df['Score'], errors='coerce')
-        st.table(lb_df.sort_values(by="Score", ascending=False).head(5))
-    except: st.error("Comms Jammed.")
+        if not lb_df.empty:
+            lb_df = lb_df.dropna(subset=['Pilot', 'Score'])
+            lb_df['Score'] = pd.to_numeric(lb_df['Score'], errors='coerce')
+            top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
+            st.table(top_5)
+        else:
+            st.info("Leaderboard is currently empty. Be the first!")
+    except:
+        st.error("Comms Jammed.")
 
     if st.button("REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
@@ -208,8 +204,13 @@ with st.expander("🛠️ System Admin"):
         if st.button("Save Speed Settings"):
             st.session_state.typing_speed = new_speed
             st.rerun() 
-        if st.button("🚨 RESET LEADERBOARD"):
+        st.divider()
+        if st.button("🚨 RESET LEADERBOARD (DANGER)"):
             try:
+                conn = st.connection("gsheets", type=GSheetsConnection)
                 conn.update(worksheet="Sheet1", data=pd.DataFrame(columns=["Pilot", "Score"]))
-                st.rerun()
-            except: st.error("Reset Failed.")
+                st.warning("Leaderboard wiped.")
+                time.sleep(1) 
+                st.rerun() 
+            except Exception as e:
+                st.error(f"Failed to reset: {e}")
