@@ -9,6 +9,7 @@ from supabase import create_client, Client
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
+    # We use the anon key. Ensure RLS policies "Public Insert" and "Public Select" are active.
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
@@ -62,17 +63,16 @@ st.markdown(f"""
 
 def show_galactic_fx(is_success):
     if is_success:
-        st.markdown('<div style="font-size: 30px; text-align: center;">✨ 🛸 ✨ 🌟 🌌 ⚔️ 🌌 🌟 🛸 ✨</div>', unsafe_allow_html=True)
-        st.markdown('<marquee scrollamount="5" style="color: #00ff41; font-family: Courier; font-weight: bold;">MISSION ACCOMPLISHED ... SECTOR SECURED ... THE FORCE IS STRONG WITH YOU ...</marquee>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size: 50px; text-align: center; margin: 10px;">✨ 🛸 ✨ 🌟 🌌 ⚔️ 🌌 🌟 🛸 ✨</div>', unsafe_allow_html=True)
+        st.markdown('<div style="background-color:#00ff41; color:black; padding:10px; text-align:center; font-weight:bold; border-radius:5px;">MISSION ACCOMPLISHED ... SECTOR SECURED ... THE FORCE IS STRONG WITH YOU</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div style="font-size: 30px; text-align: center;">🚨 🛰️ 🚨 💥 🌑 💥 🛰️ 🚨</div>', unsafe_allow_html=True)
-        st.markdown('<marquee scrollamount="10" style="color: #ff0000; font-family: Courier; font-weight: bold;">SYSTEM BREACH ... IMPERIAL FORCES OVERRUNNING SECTOR ... MISSION FAILED ...</marquee>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size: 50px; text-align: center; margin: 10px;">🚨 🛰️ 🚨 💥 🌑 💥 🛰️ 🚨</div>', unsafe_allow_html=True)
+        st.markdown('<div style="background-color:#ff0000; color:white; padding:10px; text-align:center; font-weight:bold; border-radius:5px;">SYSTEM BREACH ... IMPERIAL FORCES OVERRUNNING SECTOR ... MISSION FAILED</div>', unsafe_allow_html=True)
 
-# --- 4. LINE-AWARE CALLBACK ---
+# --- 4. CALLBACKS ---
 def handle_kill_switch():
     st.session_state.halted = True
     challenge = st.session_state.current_threat
-    # CHECK: Did they hit it after the malicious line appeared?
     has_threat_appeared = challenge.get("threat") and st.session_state.current_line_idx >= challenge.get("bad_line", 0)
 
     if has_threat_appeared:
@@ -123,8 +123,10 @@ elif st.session_state.lvl <= 5:
         st.subheader(st.session_state.current_threat['title'])
         timer_bar = st.empty()
         code_box = st.empty()
+        feedback_area = st.empty() # FIX: Explicitly managed feedback area
         
         if not st.session_state.halted and not st.session_state.panic:
+            feedback_area.empty() # Clear old messages
             full_text = ""
             lines = st.session_state.current_threat["code"].split('\n')
             total_lines = len(lines)
@@ -148,11 +150,12 @@ elif st.session_state.lvl <= 5:
         else:
             timer_bar.empty()
             code_box.code(st.session_state.current_threat["code"], language="python")
-            if st.session_state.status == "success":
-                st.success(st.session_state.current_threat["info"])
-            else:
-                msg = st.session_state.get('info_override', "SYSTEM COMPROMISED!")
-                st.error(msg)
+            with feedback_area:
+                if st.session_state.status == "success":
+                    st.success(st.session_state.current_threat["info"])
+                else:
+                    msg = st.session_state.get('info_override', "SYSTEM COMPROMISED!")
+                    st.error(msg)
 
 else:
     # --- 6. CONDITIONAL FINALE & DB UPDATE ---
@@ -164,15 +167,13 @@ else:
             }).execute()
             st.session_state.db_updated = True
         except Exception as e:
-            st.error(f"Sync Error: {e}")
+            st.error("DATABASE SYNC FAILED: Please check Supabase RLS policies.")
 
     show_galactic_fx(st.session_state.score >= 100)
 
     if st.session_state.score < 100:
-        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/106H6aMvHlSk5G/giphy.gif")
         st.markdown(f'<div class="imperial-box"><h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1><h2 style="color:white;">{st.session_state.pilot_name.upper()}</h2><p style="color:#ff4b4b; font-size:1.2em;">"You have failed me for the last time."</p><hr style="border: 1px solid #ff0000;"><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
     else:
-        st.image("https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/8hMD9YakVza3452Spu/giphy.gif")
         st.markdown(f'<div class="certificate-box"><h1>REPUBLIC COMMENDATION</h1><h2>{st.session_state.pilot_name.upper()}</h2><p style="color:#00ff41; font-size:1.2em;">"The Force is strong with you."</p><hr style="border: 1px solid #00ff41;"><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
     
     # --- 7. LEADERBOARD ---
@@ -181,11 +182,10 @@ else:
         response = supabase.table("leaderboard").select("pilot, score").order("score", desc=True).limit(5).execute()
         if response.data:
             lb_df = pd.DataFrame(response.data)
-            st.table(lb_df)
-        else:
-            st.info("Leaderboard is currently empty.")
+            # Reorder for clean display
+            st.table(lb_df[['pilot', 'score']])
     except Exception:
-        st.error("Comms Jammed.")
+        st.error("Comms Jammed: Unable to retrieve leaderboard.")
 
     if st.button("REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
