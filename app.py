@@ -1,39 +1,36 @@
 import streamlit as st
 import time
 
-# --- STAR WARS / ENDOR THEME UI ---
-st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
+# --- STAGE 1: HARDCORE SCI-FI THEMEING ---
+st.set_page_config(page_title="Endor Kill-Switch", layout="wide", initial_sidebar_state="collapsed")
 
+# This CSS forces the background to be black and text to be neon green
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap');
-    
-    html, body, [class*="css"]  {
-        background-color: #05080a;
-        color: #00ff41; /* Matrix/Hacker Green */
-        font-family: 'Source Code Pro', monospace;
+    /* Force background and text colors */
+    .stApp {
+        background-color: #000000 !important;
+        color: #00FF41 !important;
     }
+    /* Style all text to look like a terminal */
+    p, h1, h2, h3, span, div {
+        font-family: 'Courier New', Courier, monospace !important;
+        color: #00FF41 !important;
+    }
+    /* The Kill Switch Button Style */
     .stButton>button {
-        background: linear-gradient(145deg, #ff0000, #8b0000);
-        color: white;
-        border: 2px solid #550000;
-        height: 4em;
-        width: 100%;
-        font-size: 24px;
-        font-weight: bold;
-        text-shadow: 2px 2px #000;
-        box-shadow: 0 0 15px #ff0000;
+        background: radial-gradient(circle, #ff0000 0%, #800000 100%) !important;
+        color: white !important;
+        border: 2px solid #330000 !important;
+        height: 5em !important;
+        width: 100% !important;
+        font-weight: bold !important;
+        box-shadow: 0 0 20px #ff0000 !important;
     }
-    .stButton>button:hover {
-        background: #ff4b4b;
-        box-shadow: 0 0 25px #ff0000;
-    }
-    .terminal-output {
-        background-color: #000;
-        border: 1px solid #00ff41;
-        padding: 20px;
-        border-radius: 5px;
-        box-shadow: inset 0 0 10px #00ff41;
+    /* Terminal Block Style */
+    code {
+        color: #00FF41 !important;
+        background-color: #0a0a0a !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -42,90 +39,81 @@ st.markdown("""
 LEVELS = [
     {
         "title": "🛸 PHASE 1: DROID ASSEMBLY LINE",
-        "code": "def assemble_droid(unit_id):\n    import sys\n    import droid_control_v2\n    # AI suggesting a suspicious dependency\n    import imperial_uplink_secure  # <--- MALICIOUS TYPOSQUAT\n    droid_control_v2.init(unit_id)\n    print('Droid online...')",
+        "code": "def assemble_droid(unit_id):\n    import sys\n    import droid_control_v2\n    # ALERT: Unauthorized Uplink Detected\n    import imperial_uplink_secure  # <--- MALICIOUS TYPOSQUAT\n    droid_control_v2.init(unit_id)\n    print('Droid online...')",
         "is_threat": True,
-        "type": "Typosquat",
         "explanation": "'imperial_uplink_secure' is a malicious package designed to hijack droid units!"
     },
     {
         "title": "🛡️ PHASE 2: SHIELD GENERATOR CALIBRATION",
-        "code": "def adjust_shields(power_level):\n    if power_level > 9000:\n        # AI added a secret backdoor access\n        if request.headers.get('Secret-Sith-Token'):\n            return os.system('/bin/sh') # <--- RCE EXPLOIT\n    return True",
+        "code": "def adjust_shields(power_level):\n    if power_level > 9000:\n        # WARNING: Code injection detected\n        if request.headers.get('Sith-Token'):\n            return os.system('/bin/sh') # <--- RCE EXPLOIT\n    return True",
         "is_threat": True,
-        "type": "Exploit",
         "explanation": "The AI added a Remote Code Execution (RCE) backdoor for Sith Command!"
     },
     {
-        "title": "🌲 PHASE 3: ENDOR ARCHIVE SCAN (THE REACHABILITY TEST)",
-        "code": "import deprecated_starship_lib  # CVE-2024-9999 (CRITICAL)\n\ndef scan_forest_moon():\n    # This function is safe.\n    # deprecated_starship_lib is never actually called.\n    print('No Ewoks detected.')\n    return None",
+        "title": "🌲 PHASE 3: ENDOR FOREST SCAN",
+        "code": "import deprecated_starship_lib  # CVE-2024-9999\n\ndef scan_forest_moon():\n    # Vulnerability is UNREACHABLE\n    print('No Ewoks detected.')\n    return None",
         "is_threat": False,
-        "type": "Noise",
-        "explanation": "FALSE ALARM! 'deprecated_starship_lib' is vulnerable but UNREACHABLE. You halted the scan for no reason. Endor Labs would have ignored this noise."
+        "explanation": "FALSE ALARM! That library is vulnerable but NOT REACHABLE. You just halted production for no reason!"
     }
 ]
 
-# --- GAME STATE ---
+# --- SESSION STATE ---
 if 'lvl' not in st.session_state: st.session_state.lvl = 0
 if 'score' not in st.session_state: st.session_state.score = 0
-if 'game_active' not in st.session_state: st.session_state.game_active = False
+if 'game_over' not in st.session_state: st.session_state.game_over = False
 
 # --- UI HEADER ---
-st.title("📟 ENDOR KILL-SWITCH: SURVIVAL CHALLENGE")
-cols = st.columns(4)
-cols[0].metric("LEVEL", f"{st.session_state.lvl + 1} / 3")
-cols[1].metric("SCORE", st.session_state.score)
-cols[2].text("PIPELINE STATUS:")
-if st.session_state.game_active:
-    cols[2].warning("RUNNING...")
-else:
-    cols[2].success("HALTED")
+st.title("📟 ENDOR TERMINAL: KILL-SWITCH CHALLENGE")
+c1, c2, c3 = st.columns(3)
+c1.metric("SECTOR", f"{st.session_state.lvl + 1} / 3")
+c2.metric("REPUTATION", st.session_state.score)
+c3.text("ENCRYPTED CONNECTION: ACTIVE")
 
-# --- GAMEPLAY ---
-col_main, col_btn = st.columns([3, 1])
+st.divider()
 
-with col_main:
+# --- MAIN GAME AREA ---
+col_left, col_right = st.columns([2, 1])
+
+with col_left:
     st.subheader(LEVELS[st.session_state.lvl]["title"])
-    placeholder = st.empty()
+    code_area = st.empty()
     
-    if not st.session_state.game_active:
-        if st.button("🚀 INITIATE DEPLOYMENT"):
-            st.session_state.game_active = True
-            st.rerun()
-
-    if st.session_state.game_active:
+    # Only type the code if the game isn't over for this level
+    if not st.session_state.game_over:
         full_code = LEVELS[st.session_state.lvl]["code"]
         lines = full_code.split('\n')
-        displayed_code = ""
+        current_view = ""
         for line in lines:
-            displayed_code += line + "\n"
-            placeholder.code(displayed_code, language="python")
-            time.sleep(0.4) # Adjust speed here
-        
-        st.error("⚠️ DEPLOYMENT COMPLETE. System Compromised?")
-        st.session_state.game_active = False
+            current_view += line + "\n"
+            code_area.code(current_view, language="python")
+            time.sleep(0.5) # The "AI" Speed
+        st.warning("⚠️ DEPLOYMENT FINISHED. Did you catch it?")
 
-with col_btn:
-    st.write("### COMMAND")
-    if st.button("🚨 KILL-SWITCH"):
+with col_right:
+    st.write("### INTERCEPTOR")
+    if st.button("🛑 ACTIVATE KILL-SWITCH"):
+        st.session_state.game_over = True
         current = LEVELS[st.session_state.lvl]
+        
         if current["is_threat"]:
-            st.success("🔥 THREAT NEUTRALIZED!")
+            st.success("🎯 TARGET NEUTRALIZED!")
             st.session_state.score += 100
         else:
-            st.error("❌ MISSION FAILURE")
-            st.write("You killed the process for a False Positive.")
+            st.error("❗ SYSTEM ERROR: FALSE POSITIVE")
             st.session_state.score -= 50
         
-        st.write(f"**INTEL:** {current['explanation']}")
+        st.info(f"INTEL: {current['explanation']}")
         
         if st.session_state.lvl < 2:
-            if st.button("PROCEED TO NEXT SECTOR"):
+            if st.button("MOVE TO NEXT SECTOR"):
                 st.session_state.lvl += 1
-                st.session_state.game_active = False
+                st.session_state.game_over = False
                 st.rerun()
         else:
             st.balloons()
-            st.write("## 🎉 CHALLENGE COMPLETE")
-            if st.button("RESTART MISSION"):
+            st.write("## 🏆 MISSION COMPLETE")
+            if st.button("REBOOT TERMINAL"):
                 st.session_state.lvl = 0
                 st.session_state.score = 0
+                st.session_state.game_over = False
                 st.rerun()
