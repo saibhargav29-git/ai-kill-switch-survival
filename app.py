@@ -5,13 +5,14 @@ import random
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
-# --- 1. CORE LOGIC ---
+# --- 1. CORE LOGIC & DATA ---
 def load_challenges():
     try:
         with open("challenges.yaml", 'r') as f:
             return yaml.load(f, Loader=yaml.SafeLoader)['challenges']
-    except Exception as e:
-        return [{"title": "SYSTEM ERROR", "threat": False, "info": "YAML Missing", "code": "print('Check challenges.yaml')"}]
+    except:
+        # Fallback if YAML is missing
+        return [{"title": "SYSTEM ERROR", "threat": True, "bad_line": 0, "info": "YAML Missing", "code": "import os\nos.system('malicious')"}]
 
 # Initialize Session States
 if 'lvl' not in st.session_state: st.session_state.lvl = 1
@@ -22,6 +23,7 @@ if 'pilot_name' not in st.session_state: st.session_state.pilot_name = ""
 if 'status' not in st.session_state: st.session_state.status = "active"
 if 'db_updated' not in st.session_state: st.session_state.db_updated = False
 if 'typing_speed' not in st.session_state: st.session_state.typing_speed = 0.08
+if 'current_line_idx' not in st.session_state: st.session_state.current_line_idx = 0
 
 if 'challenge_pool' not in st.session_state:
     st.session_state.challenge_pool = load_challenges()
@@ -29,53 +31,47 @@ if 'challenge_pool' not in st.session_state:
 if 'current_threat' not in st.session_state:
     st.session_state.current_threat = random.choice(st.session_state.challenge_pool)
 
-# --- 2. THEME & STAR WARS CSS ---
+# --- 2. THEME & CSS ---
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
 bg_color = "#05080a"
-text_color = "#00ff41"
-if st.session_state.panic:
-    bg_color = "#440000"
-    text_color = "#ff4b4b"
-elif st.session_state.status == "success":
-    bg_color = "#0a1f0a"
-elif st.session_state.status == "fail":
-    bg_color = "#2b0505"
+if st.session_state.panic: bg_color = "#440000"
+elif st.session_state.status == "success": bg_color = "#0a1f0a"
+elif st.session_state.status == "fail": bg_color = "#2b0505"
 
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color} !important; transition: 0.5s; }}
-    h1, h2, h3, p, .stMetric, .stTable {{ color: {text_color} !important; font-family: 'Courier New', monospace; }}
+    h1, h2, h3, p, .stMetric {{ color: #00ff41 !important; font-family: 'Courier New', monospace; }}
     .stButton>button {{ 
         background: radial-gradient(circle, #ff0000 0%, #8b0000 100%) !important; 
         color: white !important; width: 100%; height: 6em; font-weight: bold; 
         border: 3px solid #ff4b4b !important; box-shadow: 0 0 20px #ff0000;
         font-size: 22px !important;
     }}
-    .certificate-box {{ 
-        border: 5px double #00ff41; padding: 40px; background-color: #0a140a; 
-        text-align: center; border-radius: 15px; box-shadow: 0 0 40px #00ff41; 
-        margin: 20px auto; 
-    }}
-    .leaderboard-style {{
-        background-color: rgba(0, 255, 65, 0.1);
-        border: 1px solid #00ff41;
-        padding: 20px;
-        border-radius: 10px;
-    }}
+    .certificate-box {{ border: 5px double #00ff41; padding: 40px; background-color: #0a140a; text-align: center; border-radius: 15px; box-shadow: 0 0 40px #00ff41; margin: 20px auto; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. CALLBACKS ---
+# --- 3. LINE-AWARE CALLBACK ---
 def handle_kill_switch():
     st.session_state.halted = True
-    st.session_state.panic = False
-    if st.session_state.current_threat["threat"]:
+    challenge = st.session_state.current_threat
+    
+    # Check: Did the threat actually appear on screen yet?
+    has_threat_appeared = challenge.get("threat") and st.session_state.current_line_idx >= challenge.get("bad_line", 0)
+
+    if has_threat_appeared:
         st.session_state.score += 100
         st.session_state.status = "success"
+    elif challenge.get("threat") and not has_threat_appeared:
+        st.session_state.score -= 25
+        st.session_state.status = "fail"
+        st.session_state.info_override = "TOO EARLY! The malicious code hadn't manifested yet."
     else:
         st.session_state.score -= 50
         st.session_state.status = "fail"
+        st.session_state.info_override = "FALSE ALARM! This system was clean."
 
 def next_sector_reset():
     st.session_state.lvl += 1
@@ -83,69 +79,69 @@ def next_sector_reset():
     st.session_state.halted = False
     st.session_state.panic = False
     st.session_state.status = "active"
+    st.session_state.current_line_idx = 0
+    if 'info_override' in st.session_state: del st.session_state.info_override
 
 # --- 4. GAME INTERFACE ---
-st.markdown('<div style="text-align:center; letter-spacing: 5px; color:#00ff41; font-weight:bold;">🛡️ ENDOR LABS | RSA 2026</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; letter-spacing:3px;">🛡️ ENDOR LABS | RSA 2026</div>', unsafe_allow_html=True)
 
 if not st.session_state.pilot_name:
-    st.title("📟 IMPERIAL COMMAND: LOGIN")
+    st.title("📟 LOGIN: PILOT CALLSIGN")
     with st.form("login"):
-        name = st.text_input("Enter Pilot Callsign:")
-        if st.form_submit_button("INITIATE MISSION"):
+        name = st.text_input("Enter Callsign:")
+        if st.form_submit_button("INITIATE"):
             if name: st.session_state.pilot_name = name; st.rerun()
 
 elif st.session_state.lvl <= 5:
-    st.title("📟 IMPERIAL COMMAND TERMINAL")
     col1, col2 = st.columns([3, 1])
-    
     with col2:
+        st.metric("SCORE", st.session_state.score)
         st.metric("SECTOR", f"{st.session_state.lvl}/5")
-        st.metric("REPUTATION", st.session_state.score)
         st.divider()
         if not st.session_state.halted:
-            st.button("🛑 KILL-SWITCH", on_click=handle_kill_switch, key="ks_btn")
+            st.button("🛑 KILL-SWITCH", on_click=handle_kill_switch)
         else:
-            st.button("🚀 NEXT SECTOR", on_click=next_sector_reset, key="next_btn")
+            st.button("🚀 NEXT SECTOR", on_click=next_sector_reset)
 
     with col1:
-        st.markdown(f"### {st.session_state.current_threat['title']}")
-        timer_placeholder = st.empty()
+        st.subheader(st.session_state.current_threat['title'])
+        timer_bar = st.empty()
         code_box = st.empty()
-        status_box = st.empty()
         
         if not st.session_state.halted and not st.session_state.panic:
             full_text = ""
             lines = st.session_state.current_threat["code"].split('\n')
-            total_chars = len(st.session_state.current_threat["code"])
-            current_chars = 0
-            for line in lines:
+            total_lines = len(lines)
+            
+            for idx, line in enumerate(lines):
                 if st.session_state.halted: break
+                st.session_state.current_line_idx = idx 
+                
+                timer_bar.progress((idx + 1) / total_lines, text=f"Scanning Line {idx+1}...")
+                
                 for char in line:
                     if st.session_state.halted: break
                     full_text += char
-                    current_chars += 1
-                    timer_placeholder.progress(min(current_chars/total_chars, 1.0), text="⏳ DEPLOYING...")
                     code_box.code(full_text + "█", language="python")
                     time.sleep(st.session_state.typing_speed)
                 full_text += "\n"
                 time.sleep(st.session_state.typing_speed * 2)
+            
             if not st.session_state.halted:
                 st.session_state.panic = True
                 st.rerun()
         else:
-            timer_placeholder.empty()
+            timer_bar.empty()
             code_box.code(st.session_state.current_threat["code"], language="python")
             if st.session_state.status == "success":
-                status_box.success(f"🎯 NEUTRALIZED: {st.session_state.current_threat['info']}")
-            elif st.session_state.status == "fail":
-                status_box.error("❌ MISFIRE! System was safe.")
-            elif st.session_state.panic:
-                status_box.warning("⚠️ DEPLOYMENT FINISHED.")
+                st.success(st.session_state.current_threat["info"])
+            else:
+                msg = st.session_state.get('info_override', "SYSTEM COMPROMISED!")
+                st.error(msg)
 
 else:
-    # --- 5. FINAL CERTIFICATE & LEADERBOARD ---
-    # Instead of balloons, we use a Star Wars Hyperspace GIF
-    st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKVUn7iM8FMEU24/giphy.gif" width="400"></div>', unsafe_allow_html=True)
+    # --- 5. CERTIFICATE & LEADERBOARD ---
+    st.markdown('<div style="text-align:center;"><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueXF4ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6ZzR6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKVUn7iM8FMEU24/giphy.gif" width="300"></div>', unsafe_allow_html=True)
     
     conn = st.connection("gsheets", type=GSheetsConnection)
     
@@ -156,63 +152,52 @@ else:
             updated_df = pd.concat([df, new_row], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
             st.session_state.db_updated = True
-        except: pass
+        except Exception as e:
+            st.error(f"Uplink Error: {e}")
 
     st.markdown(f"""
         <div class="certificate-box">
-            <h1 style="color:#00ff41;">COMMENDATION</h1>
-            <h2 style="letter-spacing:10px; color:white;">{st.session_state.pilot_name.upper()}</h2>
-            <p style="font-style:italic; color:#00ff41;">"The Force is strong with this one."</p>
-            <hr style="border: 1px solid #00ff41;">
-            <h3 style="color:white;">FINAL REPUTATION: {st.session_state.score}</h3>
+            <h1>MISSION COMPLETE</h1>
+            <h2>{st.session_state.pilot_name.upper()}</h2>
+            <h3>FINAL SCORE: {st.session_state.score}</h3>
         </div>
     """, unsafe_allow_html=True)
     
-    # LEADERBOARD SECTION
-    st.markdown("### 🏆 GALACTIC LEADERBOARD")
-    leader_container = st.container()
-    with leader_container:
-        try:
-            # Force refresh with ttl=0
-            lb_df = conn.read(worksheet="Sheet1", ttl=0)
-            # Ensure Score is numeric for sorting
-            lb_df['Score'] = pd.to_numeric(lb_df['Score'])
-            top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
-            # Use st.dataframe for a cleaner look in the dark theme
-            st.dataframe(top_5, use_container_width=True, hide_index=True)
-        except Exception as e:
-            st.error(f"Comms Jammed: Link to Leaderboard lost.")
+    st.markdown("### 🏆 GALACTIC TOP ACE PILOTS")
+    try:
+        lb_df = conn.read(worksheet="Sheet1", ttl=0)
+        lb_df = lb_df.dropna(subset=['Pilot', 'Score'])
+        lb_df['Score'] = pd.to_numeric(lb_df['Score'], errors='coerce')
+        top_5 = lb_df.sort_values(by="Score", ascending=False).head(5)
+        st.table(top_5)
+    except:
+        st.error("Comms Jammed: Link to Leaderboard lost.")
 
     if st.button("REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
         st.rerun()
 
-# --- 6. SYSTEM ADMIN (RESTORED WITH CORRECT RERUN) ---
+# --- 6. SYSTEM ADMIN ---
 st.divider()
 with st.expander("🛠️ System Admin"):
     admin_pass = st.text_input("Admin Override:", type="password")
-    
-    # Check password from secrets
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
-        st.success("Imperial Command Authenticated")
+        st.success("Authenticated")
         
-        # 1. Adjust Typing Speed
         new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
         if st.button("Save Speed Settings"):
             st.session_state.typing_speed = new_speed
-            st.rerun()  # Forces the app to update the typing rhythm immediately
+            st.rerun() 
 
         st.divider()
 
-        # 2. Reset Board
         if st.button("🚨 RESET LEADERBOARD (DANGER)"):
             try:
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                # Create a fresh empty dataframe with correct headers
                 empty_df = pd.DataFrame(columns=["Pilot", "Score"])
                 conn.update(worksheet="Sheet1", data=empty_df)
-                st.warning("Leaderboard wiped successfully.")
-                time.sleep(1) # Give user a moment to see the message
-                st.rerun()  # Refresh to show the empty table
+                st.warning("Leaderboard wiped.")
+                time.sleep(1) 
+                st.rerun() 
             except Exception as e:
                 st.error(f"Failed to reset: {e}")
