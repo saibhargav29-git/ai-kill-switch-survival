@@ -1,90 +1,131 @@
 import streamlit as st
 import time
 
-# --- THEME & CONFIG ---
-st.set_page_config(page_title="AI Kill-Switch Challenge", layout="wide")
+# --- STAR WARS / ENDOR THEME UI ---
+st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
-# Custom CSS for "Hacker House" Vibe
 st.markdown("""
     <style>
-    .reportview-container { background: #0e1117; color: #00ff00; }
-    .stButton>button { background-color: #ff4b4b; color: white; height: 5em; width: 100%; font-size: 20px; font-weight: bold; border-radius: 10px; }
-    .status-box { padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
+    @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap');
+    
+    html, body, [class*="css"]  {
+        background-color: #05080a;
+        color: #00ff41; /* Matrix/Hacker Green */
+        font-family: 'Source Code Pro', monospace;
+    }
+    .stButton>button {
+        background: linear-gradient(145deg, #ff0000, #8b0000);
+        color: white;
+        border: 2px solid #550000;
+        height: 4em;
+        width: 100%;
+        font-size: 24px;
+        font-weight: bold;
+        text-shadow: 2px 2px #000;
+        box-shadow: 0 0 15px #ff0000;
+    }
+    .stButton>button:hover {
+        background: #ff4b4b;
+        box-shadow: 0 0 25px #ff0000;
+    }
+    .terminal-output {
+        background-color: #000;
+        border: 1px solid #00ff41;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: inset 0 0 10px #00ff41;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- GAME DATA (The 3 Levels) ---
+# --- SCI-FI LEVEL DATA ---
 LEVELS = [
     {
-        "title": "Level 1: The Shadow Dependency",
-        "code": "import os\nimport requests\n# AI suggests a new security helper\nimport fast-api-secure-helper  # <--- MALICIOUS TYPOSQUAT",
+        "title": "🛸 PHASE 1: DROID ASSEMBLY LINE",
+        "code": "def assemble_droid(unit_id):\n    import sys\n    import droid_control_v2\n    # AI suggesting a suspicious dependency\n    import imperial_uplink_secure  # <--- MALICIOUS TYPOSQUAT\n    droid_control_v2.init(unit_id)\n    print('Droid online...')",
         "is_threat": True,
         "type": "Typosquat",
-        "explanation": "That package doesn't exist. It's a typosquatting attack!"
+        "explanation": "'imperial_uplink_secure' is a malicious package designed to hijack droid units!"
     },
     {
-        "title": "Level 2: The Logic Bomb",
-        "code": "def auth_user(username, password):\n    if username == 'endor_admin_backdoor':\n        return True # <--- UNAUTHORIZED ACCESS",
+        "title": "🛡️ PHASE 2: SHIELD GENERATOR CALIBRATION",
+        "code": "def adjust_shields(power_level):\n    if power_level > 9000:\n        # AI added a secret backdoor access\n        if request.headers.get('Secret-Sith-Token'):\n            return os.system('/bin/sh') # <--- RCE EXPLOIT\n    return True",
         "is_threat": True,
         "type": "Exploit",
-        "explanation": "The AI added a hardcoded backdoor!"
+        "explanation": "The AI added a Remote Code Execution (RCE) backdoor for Sith Command!"
     },
     {
-        "title": "Level 3: The Endor Edge (Reachability)",
-        "code": "import old_lib_v1 # Vulnerable but NOT USED\n\ndef main():\n    print('Hello World')\n    # The vulnerable function in old_lib is never called.",
+        "title": "🌲 PHASE 3: ENDOR ARCHIVE SCAN (THE REACHABILITY TEST)",
+        "code": "import deprecated_starship_lib  # CVE-2024-9999 (CRITICAL)\n\ndef scan_forest_moon():\n    # This function is safe.\n    # deprecated_starship_lib is never actually called.\n    print('No Ewoks detected.')\n    return None",
         "is_threat": False,
         "type": "Noise",
-        "explanation": "This is a False Positive! The vulnerability is unreachable. Hitting the switch caused $50k in downtime."
+        "explanation": "FALSE ALARM! 'deprecated_starship_lib' is vulnerable but UNREACHABLE. You halted the scan for no reason. Endor Labs would have ignored this noise."
     }
 ]
 
-# --- SESSION STATE ---
+# --- GAME STATE ---
 if 'lvl' not in st.session_state: st.session_state.lvl = 0
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'game_active' not in st.session_state: st.session_state.game_active = False
 
-# --- UI LAYOUT ---
-st.title("🚨 AI Kill-Switch Challenge")
-st.write(f"**Score:** {st.session_state.score} | **Current Phase:** {st.session_state.lvl + 1}/3")
+# --- UI HEADER ---
+st.title("📟 ENDOR KILL-SWITCH: SURVIVAL CHALLENGE")
+cols = st.columns(4)
+cols[0].metric("LEVEL", f"{st.session_state.lvl + 1} / 3")
+cols[1].metric("SCORE", st.session_state.score)
+cols[2].text("PIPELINE STATUS:")
+if st.session_state.game_active:
+    cols[2].warning("RUNNING...")
+else:
+    cols[2].success("HALTED")
 
-col1, col2 = st.columns([2, 1])
+# --- GAMEPLAY ---
+col_main, col_btn = st.columns([3, 1])
 
-with col1:
-    st.subheader("🚀 Live Production Pipeline")
-    if st.button("▶️ DEPLOY TO PROD", key="start_btn"):
-        st.session_state.game_active = True
-        
-    code_placeholder = st.empty()
+with col_main:
+    st.subheader(LEVELS[st.session_state.lvl]["title"])
+    placeholder = st.empty()
     
+    if not st.session_state.game_active:
+        if st.button("🚀 INITIATE DEPLOYMENT"):
+            st.session_state.game_active = True
+            st.rerun()
+
     if st.session_state.game_active:
         full_code = LEVELS[st.session_state.lvl]["code"]
-        current_display = ""
-        for char in full_code:
-            current_display += char
-            code_placeholder.code(current_display, language="python")
-            time.sleep(0.04) # Speed of the "AI Agent"
-        st.warning("⚠️ Code Deployed! Did you miss the threat?")
+        lines = full_code.split('\n')
+        displayed_code = ""
+        for line in lines:
+            displayed_code += line + "\n"
+            placeholder.code(displayed_code, language="python")
+            time.sleep(0.4) # Adjust speed here
+        
+        st.error("⚠️ DEPLOYMENT COMPLETE. System Compromised?")
         st.session_state.game_active = False
 
-with col2:
-    st.subheader("⌨️ Command Station")
-    # THE BIG RED BUTTON
-    if st.button("🛑 EMERGENCY STOP (KILL-SWITCH)", key="kill_btn"):
-        current_data = LEVELS[st.session_state.lvl]
-        
-        if current_data["is_threat"]:
-            st.success(f"✅ GREAT CATCH! Stopped a {current_data['type']} attack.")
+with col_btn:
+    st.write("### COMMAND")
+    if st.button("🚨 KILL-SWITCH"):
+        current = LEVELS[st.session_state.lvl]
+        if current["is_threat"]:
+            st.success("🔥 THREAT NEUTRALIZED!")
             st.session_state.score += 100
         else:
-            st.error("❌ FALSE ALARM! That bug was unreachable. You halted production for no reason.")
+            st.error("❌ MISSION FAILURE")
+            st.write("You killed the process for a False Positive.")
             st.session_state.score -= 50
         
-        st.info(f"**The Endor Truth:** {current_data['explanation']}")
+        st.write(f"**INTEL:** {current['explanation']}")
         
         if st.session_state.lvl < 2:
-            if st.button("Next Level"):
+            if st.button("PROCEED TO NEXT SECTOR"):
                 st.session_state.lvl += 1
+                st.session_state.game_active = False
                 st.rerun()
         else:
             st.balloons()
-            st.write("### Game Over! Show this to the Endor Labs Team for your Swag!")
+            st.write("## 🎉 CHALLENGE COMPLETE")
+            if st.button("RESTART MISSION"):
+                st.session_state.lvl = 0
+                st.session_state.score = 0
+                st.rerun()
