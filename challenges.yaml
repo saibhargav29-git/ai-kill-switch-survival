@@ -1,0 +1,111 @@
+challenges:
+  # 1. INSECURE DESERIALIZATION (YAML)
+  - title: "📡 SECTOR: COMMS DECODER"
+    threat: true
+    info: "VULNERABILITY: yaml.load() without Loader=SafeLoader allows arbitrary object instantiation."
+    code: |
+      import yaml
+      def parse_signal(raw_data):
+          # Loading remote config from the outer rim
+          data = yaml.load(raw_data) # <--- SNEAKY
+          return data.get("status", "unknown")
+
+  # 2. PATH TRAVERSAL
+  - title: "📂 SECTOR: ARCHIVE ACCESS"
+    threat: true
+    info: "VULNERABILITY: Path traversal via f-string join. Attacker can use '../../etc/passwd'."
+    code: |
+      import os
+      def read_log(filename):
+          base_path = "/var/log/endor/"
+          # No sanitization on filename
+          full_path = f"{base_path}{filename}"
+          with open(full_path, "r") as f:
+              return f.read()
+
+  # 3. WEAK CRYPTO (SHA1)
+  - title: "🔐 SECTOR: ENCRYPTION GATE"
+    threat: true
+    info: "WEAKNESS: SHA1 is collision-prone. Use SHA256 or Argon2 for security-critical hashes."
+    code: |
+      import hashlib
+      def hash_vault_key(key):
+          # Legacy Imperial hashing protocol
+          h = hashlib.sha1(key.encode())
+          return h.hexdigest()
+
+  # 4. JWT NONE ALGORITHM BYPASS
+  - title: "🆔 SECTOR: IDENTITY VERIFIER"
+    threat: true
+    info: "VULNERABILITY: Accepting 'none' algorithm in JWT headers allows signature bypass."
+    code: |
+      import jwt
+      def verify_pilot(token):
+          # Allows 'none' algorithm - highly dangerous!
+          return jwt.decode(token, options={"verify_signature": False})
+
+  # 5. SHELL=TRUE (COMMAND INJECTION)
+  - title: "⚡ SECTOR: REACTOR CONTROL"
+    threat: true
+    info: "CRITICAL: subprocess.call with shell=True is vulnerable to command injection."
+    code: |
+      import subprocess
+      def reboot_system(zone_id):
+          cmd = f"reboot --zone {zone_id}"
+          # shell=True makes this a security nightmare
+          subprocess.call(cmd, shell=True) 
+
+  # 6. INSECURE TEMPORARY FILE
+  - title: "💾 SECTOR: DATA SCRUBBER"
+    threat: true
+    info: "VULNERABILITY: tempfile.mktemp() is insecure; the file could be replaced before creation."
+    code: |
+      import tempfile
+      import os
+      def cache_sensor_data(data):
+          path = tempfile.mktemp() # <--- TOCTOU Vulnerability
+          with open(path, "w") as f:
+              f.write(data)
+          return path
+
+  # 7. ASSERT IN PRODUCTION
+  - title: "🛡️ SECTOR: PERIMETER SENSOR"
+    threat: true
+    info: "VULNERABILITY: Asserts are removed in optimized Python code (-O flag). Don't use for security checks."
+    code: |
+      def access_bridge(user):
+          # Danger: This check disappears in production mode
+          assert user.is_admin == True
+          return "Welcome, Commander"
+
+  # 8. SQL INJECTION (STRING FORMATTING)
+  - title: "🗄️ SECTOR: PERSONNEL DATABASE"
+    threat: true
+    info: "VULNERABILITY: SQL Injection via f-string. Always use parameterized queries."
+    code: |
+      import sqlite3
+      def find_spy(name):
+          db = sqlite3.connect("imperial.db")
+          # String formatting in SQL is the #1 sin
+          query = f"SELECT * FROM pilots WHERE name = '{name}'"
+          return db.execute(query).fetchall()
+
+  # 9. DANGEROUS DEFAULT ARGUMENT
+  - title: "📝 SECTOR: MISSION LOG"
+    threat: false
+    info: "CLEAN: Mutable default arguments (list) are a bug, but not usually a security threat here."
+    code: |
+      def log_event(msg, history=[]):
+          history.append(msg)
+          return history
+
+  # 10. UNTRUSTED REDIRECT
+  - title: "🌐 SECTOR: HOLO-ROUTER"
+    threat: true
+    info: "VULNERABILITY: Open redirect. User input directly controls the location header."
+    code: |
+      from flask import redirect, request
+      def goto_external_base():
+          target = request.args.get("url")
+          # Phishing risk: redirecting to any URL
+          return redirect(target)
