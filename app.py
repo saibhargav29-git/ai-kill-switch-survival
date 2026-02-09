@@ -3,12 +3,14 @@ import time
 import yaml
 import random
 import pandas as pd
+import base64
 from supabase import create_client, Client
 
 # --- 1. DATABASE SETUP (SUPABASE) ---
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
+    # We use the anon key. Ensure RLS policies "Public Insert" and "Public Select" are active.
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
@@ -37,33 +39,28 @@ if 'challenge_pool' not in st.session_state:
 if 'current_threat' not in st.session_state:
     st.session_state.current_threat = random.choice(st.session_state.challenge_pool)
 
-# --- 3. THEME & STAR WARS FX ---
+# --- 3. THEME & AUDIO FX ---
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
-# IMPROVED AUDIO FUNCTION
-def play_imperial_theme():
+def play_audio(file_name, loop=True):
     if st.session_state.music_on:
-        # High-reliability direct MP3 stream
-        audio_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" # Placeholder: Replace with your direct MP3 link
-        
-        audio_html = f"""
-            <div id="audio-container">
-                <audio autoplay loop id="bg-music">
-                    <source src="{audio_url}" type="audio/mp3">
-                </audio>
-            </div>
-            <script>
-                var audio = window.parent.document.getElementById("bg-music");
-                if (audio) {{
-                    audio.volume = 0.2;
-                    audio.play().catch(function(error) {{
-                        console.log("Autoplay blocked. Waiting for user interaction.");
-                    }});
-                }}
-            </script>
-        """
-        # Using st.html for better integration in newer Streamlit versions
-        st.components.v1.html(audio_html, height=0)
+        try:
+            with open(file_name, "rb") as f:
+                data = f.read()
+                b64 = base64.b64encode(data).decode()
+                loop_attr = "loop" if loop else ""
+                audio_html = f"""
+                    <audio autoplay {loop_attr} id="bg-music">
+                        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                    </audio>
+                    <script>
+                        var audio = window.parent.document.getElementById("bg-music");
+                        if (audio) {{ audio.volume = 0.3; audio.play(); }}
+                    </script>
+                """
+                st.components.v1.html(audio_html, height=0)
+        except Exception:
+            pass # Silently fail if files aren't uploaded yet
 
 bg_color = "#05080a"
 if st.session_state.panic: bg_color = "#440000"
@@ -85,9 +82,12 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# Trigger music logic
-if st.session_state.pilot_name and st.session_state.lvl <= 5:
-    play_imperial_theme()
+# Audio trigger logic
+if st.session_state.pilot_name:
+    if st.session_state.lvl > 5 and st.session_state.score >= 100:
+        play_audio("star_wars_theme.mp3", loop=False)
+    elif st.session_state.lvl <= 5:
+        play_audio("imperial_march.mp3", loop=True)
 
 def show_galactic_fx(is_success):
     if is_success:
@@ -186,7 +186,7 @@ elif st.session_state.lvl <= 5:
                     st.error(msg)
 
 else:
-    # --- 6. CONDITIONAL FINALE & DB UPDATE ---
+    # --- 6. CONDITIONAL FINALE & DB UPDATE (ORIGINAL LOGIC) ---
     if not st.session_state.db_updated:
         try:
             supabase.table("leaderboard").insert({
@@ -195,7 +195,7 @@ else:
             }).execute()
             st.session_state.db_updated = True
         except Exception as e:
-            st.error("DATABASE SYNC FAILED: Check Supabase Policy.")
+            st.error("DATABASE SYNC FAILED: Please check Supabase RLS policies.")
 
     show_galactic_fx(st.session_state.score >= 100)
 
@@ -225,7 +225,7 @@ with st.expander("🛠️ System Admin"):
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
         st.success("Authenticated")
         st.session_state.music_on = st.checkbox("Music On/Off", value=st.session_state.music_on)
-        new_speed = st.slider("Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
-        if st.button("Apply Admin Changes"):
+        new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
+        if st.button("Save Speed Settings"):
             st.session_state.typing_speed = new_speed
             st.rerun()
