@@ -10,7 +10,6 @@ from supabase import create_client, Client
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
-    # We use the anon key. Ensure RLS policies "Public Insert" and "Public Select" are active.
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
@@ -36,6 +35,7 @@ for key, val in state_defaults.items():
 if 'challenge_pool' not in st.session_state:
     st.session_state.challenge_pool = load_challenges()
 
+# Ensure we have a starting threat
 if 'current_threat' not in st.session_state:
     st.session_state.current_threat = random.choice(st.session_state.challenge_pool)
 
@@ -60,7 +60,7 @@ def play_audio(file_name, loop=True):
                 """
                 st.components.v1.html(audio_html, height=0)
         except Exception:
-            pass # Silently fail if files aren't uploaded yet
+            pass 
 
 bg_color = "#05080a"
 if st.session_state.panic: bg_color = "#440000"
@@ -82,7 +82,6 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# Audio trigger logic
 if st.session_state.pilot_name:
     if st.session_state.lvl > 5 and st.session_state.score >= 100:
         play_audio("star_wars_theme.mp3", loop=False)
@@ -117,6 +116,7 @@ def handle_kill_switch():
 
 def next_sector_reset():
     st.session_state.lvl += 1
+    # FIX: Explicitly pick a NEW random challenge for the next level
     st.session_state.current_threat = random.choice(st.session_state.challenge_pool)
     st.session_state.halted = False
     st.session_state.panic = False
@@ -134,6 +134,8 @@ if not st.session_state.pilot_name:
         if st.form_submit_button("INITIATE"):
             if name: 
                 st.session_state.pilot_name = name
+                # Ensure the very first level has a random threat
+                st.session_state.current_threat = random.choice(st.session_state.challenge_pool)
                 st.rerun()
 
 elif st.session_state.lvl <= 5:
@@ -186,7 +188,7 @@ elif st.session_state.lvl <= 5:
                     st.error(msg)
 
 else:
-    # --- 6. CONDITIONAL FINALE & DB UPDATE (ORIGINAL LOGIC) ---
+    # --- 6. CONDITIONAL FINALE & DB UPDATE ---
     if not st.session_state.db_updated:
         try:
             supabase.table("leaderboard").insert({
@@ -195,16 +197,15 @@ else:
             }).execute()
             st.session_state.db_updated = True
         except Exception as e:
-            st.error("DATABASE SYNC FAILED: Please check Supabase RLS policies.")
+            st.error("DATABASE SYNC FAILED.")
 
     show_galactic_fx(st.session_state.score >= 100)
 
     if st.session_state.score < 100:
-        st.markdown(f'<div class="imperial-box"><h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1><h2 style="color:white;">{st.session_state.pilot_name.upper()}</h2><p style="color:#ff4b4b; font-size:1.2em;">"You have failed me for the last time."</p><hr style="border: 1px solid #ff0000;"><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="imperial-box"><h1 style="color:#ff0000;">IMPERIAL OCCUPATION</h1><h2 style="color:white;">{st.session_state.pilot_name.upper()}</h2><hr style="border: 1px solid #ff0000;"><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="certificate-box"><h1>REPUBLIC COMMENDATION</h1><h2>{st.session_state.pilot_name.upper()}</h2><p style="color:#00ff41; font-size:1.2em;">"The Force is strong with you."</p><hr style="border: 1px solid #00ff41;"><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="certificate-box"><h1>REPUBLIC COMMENDATION</h1><h2>{st.session_state.pilot_name.upper()}</h2><hr style="border: 1px solid #00ff41;"><h3 style="color:white;">FINAL SCORE: {st.session_state.score}</h3></div>', unsafe_allow_html=True)
     
-    # --- 7. LEADERBOARD ---
     st.markdown("### 🏆 GALACTIC TOP ACE PILOTS")
     try:
         response = supabase.table("leaderboard").select("pilot, score").order("score", desc=True).limit(5).execute()
@@ -212,7 +213,7 @@ else:
             lb_df = pd.DataFrame(response.data)
             st.table(lb_df[['pilot', 'score']])
     except Exception:
-        st.error("Comms Jammed: Unable to retrieve leaderboard.")
+        st.error("Comms Jammed.")
 
     if st.button("REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
@@ -226,6 +227,6 @@ with st.expander("🛠️ System Admin"):
         st.success("Authenticated")
         st.session_state.music_on = st.checkbox("Music On/Off", value=st.session_state.music_on)
         new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
-        if st.button("Save Speed Settings"):
+        if st.button("Save Settings"):
             st.session_state.typing_speed = new_speed
             st.rerun()
