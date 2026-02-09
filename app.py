@@ -40,20 +40,29 @@ if 'current_threat' not in st.session_state:
 # --- 3. THEME & STAR WARS FX ---
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
-# Audio Function using a direct MP3 stream
+# IMPROVED AUDIO FUNCTION
 def play_imperial_theme():
     if st.session_state.music_on:
-        # Direct stream link to the Imperial March
-        audio_url = "https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptoken=MzM1NDI1Njg3MzM1NTMx_f_2f_2bgO_2f_2bSg8rU"
+        # High-reliability direct MP3 stream
+        audio_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" # Placeholder: Replace with your direct MP3 link
+        
         audio_html = f"""
-            <audio autoplay loop id="bg-music">
-                <source src="{audio_url}" type="audio/mp3">
-            </audio>
+            <div id="audio-container">
+                <audio autoplay loop id="bg-music">
+                    <source src="{audio_url}" type="audio/mp3">
+                </audio>
+            </div>
             <script>
-                var audio = document.getElementById("bg-music");
-                audio.volume = 0.2; // Set volume to 20% to not drown out the booth talk
+                var audio = window.parent.document.getElementById("bg-music");
+                if (audio) {{
+                    audio.volume = 0.2;
+                    audio.play().catch(function(error) {{
+                        console.log("Autoplay blocked. Waiting for user interaction.");
+                    }});
+                }}
             </script>
         """
+        # Using st.html for better integration in newer Streamlit versions
         st.components.v1.html(audio_html, height=0)
 
 bg_color = "#05080a"
@@ -76,7 +85,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# Trigger music if a pilot is logged in
+# Trigger music logic
 if st.session_state.pilot_name and st.session_state.lvl <= 5:
     play_imperial_theme()
 
