@@ -9,7 +9,6 @@ from supabase import create_client, Client
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
-    # We use the anon key. Ensure RLS policies "Public Insert" and "Public Select" are active.
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
@@ -27,7 +26,7 @@ def load_challenges():
 state_defaults = {
     'lvl': 1, 'score': 0, 'halted': False, 'panic': False, 
     'pilot_name': "", 'status': "active", 'db_updated': False, 
-    'typing_speed': 0.08, 'current_line_idx': 0
+    'typing_speed': 0.08, 'current_line_idx': 0, 'music_on': True
 }
 for key, val in state_defaults.items():
     if key not in st.session_state: st.session_state[key] = val
@@ -40,6 +39,22 @@ if 'current_threat' not in st.session_state:
 
 # --- 3. THEME & STAR WARS FX ---
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
+
+# Audio Function using a direct MP3 stream
+def play_imperial_theme():
+    if st.session_state.music_on:
+        # Direct stream link to the Imperial March
+        audio_url = "https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptoken=MzM1NDI1Njg3MzM1NTMx_f_2f_2bgO_2f_2bSg8rU"
+        audio_html = f"""
+            <audio autoplay loop id="bg-music">
+                <source src="{audio_url}" type="audio/mp3">
+            </audio>
+            <script>
+                var audio = document.getElementById("bg-music");
+                audio.volume = 0.2; // Set volume to 20% to not drown out the booth talk
+            </script>
+        """
+        st.components.v1.html(audio_html, height=0)
 
 bg_color = "#05080a"
 if st.session_state.panic: bg_color = "#440000"
@@ -60,6 +75,10 @@ st.markdown(f"""
     .imperial-box {{ border: 5px solid #ff0000; padding: 40px; background-color: #1a0000; text-align: center; border-radius: 5px; box-shadow: 0 0 40px #ff0000; margin: 20px auto; }}
     </style>
     """, unsafe_allow_html=True)
+
+# Trigger music if a pilot is logged in
+if st.session_state.pilot_name and st.session_state.lvl <= 5:
+    play_imperial_theme()
 
 def show_galactic_fx(is_success):
     if is_success:
@@ -123,10 +142,10 @@ elif st.session_state.lvl <= 5:
         st.subheader(st.session_state.current_threat['title'])
         timer_bar = st.empty()
         code_box = st.empty()
-        feedback_area = st.empty() # FIX: Explicitly managed feedback area
+        feedback_area = st.empty() 
         
         if not st.session_state.halted and not st.session_state.panic:
-            feedback_area.empty() # Clear old messages
+            feedback_area.empty()
             full_text = ""
             lines = st.session_state.current_threat["code"].split('\n')
             total_lines = len(lines)
@@ -167,7 +186,7 @@ else:
             }).execute()
             st.session_state.db_updated = True
         except Exception as e:
-            st.error("DATABASE SYNC FAILED: Please check Supabase RLS policies.")
+            st.error("DATABASE SYNC FAILED: Check Supabase Policy.")
 
     show_galactic_fx(st.session_state.score >= 100)
 
@@ -182,7 +201,6 @@ else:
         response = supabase.table("leaderboard").select("pilot, score").order("score", desc=True).limit(5).execute()
         if response.data:
             lb_df = pd.DataFrame(response.data)
-            # Reorder for clean display
             st.table(lb_df[['pilot', 'score']])
     except Exception:
         st.error("Comms Jammed: Unable to retrieve leaderboard.")
@@ -197,7 +215,8 @@ with st.expander("🛠️ System Admin"):
     admin_pass = st.text_input("Admin Override:", type="password")
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
         st.success("Authenticated")
-        new_speed = st.slider("Adjust Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
-        if st.button("Save Speed Settings"):
+        st.session_state.music_on = st.checkbox("Music On/Off", value=st.session_state.music_on)
+        new_speed = st.slider("Typing Speed:", 0.01, 0.20, st.session_state.typing_speed)
+        if st.button("Apply Admin Changes"):
             st.session_state.typing_speed = new_speed
             st.rerun()
