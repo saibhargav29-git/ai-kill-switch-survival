@@ -169,81 +169,6 @@ def play_sound_effect(effect_type):
     """
     st.components.v1.html(sound_html, height=0)
 
-def play_darth_vader_breathing():
-    """Play Darth Vader breathing sound effect using Web Audio API."""
-    if not st.session_state.music_on:
-        return
-
-    breathing_html = """
-        <script>
-        (function() {
-            var audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-            // Breathing in (inhale)
-            function breatheIn(startTime) {
-                var oscillator = audioContext.createOscillator();
-                var gainNode = audioContext.createGain();
-                var filter = audioContext.createBiquadFilter();
-
-                oscillator.type = 'sawtooth';
-                oscillator.frequency.setValueAtTime(40, startTime);
-                oscillator.frequency.exponentialRampToValueAtTime(60, startTime + 1.5);
-
-                filter.type = 'lowpass';
-                filter.frequency.value = 300;
-                filter.Q.value = 5;
-
-                oscillator.connect(filter);
-                filter.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-
-                gainNode.gain.setValueAtTime(0, startTime);
-                gainNode.gain.linearRampToValueAtTime(0.15, startTime + 0.3);
-                gainNode.gain.linearRampToValueAtTime(0.1, startTime + 1.2);
-                gainNode.gain.linearRampToValueAtTime(0, startTime + 1.5);
-
-                oscillator.start(startTime);
-                oscillator.stop(startTime + 1.5);
-            }
-
-            // Breathing out (exhale)
-            function breatheOut(startTime) {
-                var oscillator = audioContext.createOscillator();
-                var gainNode = audioContext.createGain();
-                var filter = audioContext.createBiquadFilter();
-
-                oscillator.type = 'sawtooth';
-                oscillator.frequency.setValueAtTime(60, startTime);
-                oscillator.frequency.exponentialRampToValueAtTime(35, startTime + 1.8);
-
-                filter.type = 'lowpass';
-                filter.frequency.value = 250;
-                filter.Q.value = 6;
-
-                oscillator.connect(filter);
-                filter.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-
-                gainNode.gain.setValueAtTime(0, startTime);
-                gainNode.gain.linearRampToValueAtTime(0.12, startTime + 0.4);
-                gainNode.gain.linearRampToValueAtTime(0.08, startTime + 1.5);
-                gainNode.gain.linearRampToValueAtTime(0, startTime + 1.8);
-
-                oscillator.start(startTime);
-                oscillator.stop(startTime + 1.8);
-            }
-
-            // Play 2 breath cycles
-            var now = audioContext.currentTime;
-            breatheIn(now);
-            breatheOut(now + 1.7);
-            breatheIn(now + 3.7);
-            breatheOut(now + 5.4);
-        })();
-        </script>
-    """
-    st.components.v1.html(breathing_html, height=0)
-
 # Dynamic background
 bg_color = "#05080a"
 if st.session_state.time_expired:
@@ -285,6 +210,14 @@ st.markdown(f"""
         0% {{ transform: translateY(0) scale(1); opacity: 1; }}
         100% {{ transform: translateY(-30px) scale(1.5); opacity: 0; }}
     }}
+    @keyframes particle-float {{
+        0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }}
+        100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }}
+    }}
+    @keyframes glow-pulse {{
+        0%, 100% {{ filter: brightness(1); }}
+        50% {{ filter: brightness(1.5); }}
+    }}
 
     .stApp {{
         background-color: {bg_color} !important;
@@ -318,16 +251,18 @@ st.markdown(f"""
         transform: scale(0.95);
     }}
 
-    /* Live timer display */
+    /* Live timer display - enhanced */
     .live-timer {{
         font-family: 'Courier New', monospace;
-        font-size: 48px;
+        font-size: 80px;
         font-weight: bold;
         text-align: center;
-        padding: 10px;
-        border: 2px solid;
-        border-radius: 10px;
-        margin: 10px 0;
+        padding: 20px;
+        border: 4px solid;
+        border-radius: 15px;
+        margin: 20px 0;
+        background: rgba(0, 0, 0, 0.5);
+        letter-spacing: 8px;
     }}
 
     /* Pipeline visualization - enhanced */
@@ -459,6 +394,7 @@ st.markdown(f"""
         margin: 20px auto;
         position: relative;
         overflow: hidden;
+        animation: glow-pulse 3s ease-in-out infinite;
     }}
     .certificate-box::before {{
         content: '';
@@ -470,10 +406,24 @@ st.markdown(f"""
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
         animation: certificate-shine 3s infinite;
     }}
+    .certificate-box::after {{
+        content: '✨';
+        position: absolute;
+        font-size: 30px;
+        animation: particle-float 3s ease-in infinite;
+        opacity: 0;
+    }}
     .certificate-box .stars {{
-        font-size: 40px;
+        font-size: 50px;
         margin: 20px 0;
         animation: star-twinkle 2s ease-in-out infinite;
+        filter: drop-shadow(0 0 10px #00ff41);
+    }}
+    .particle {{
+        position: absolute;
+        font-size: 20px;
+        animation: particle-float 4s ease-in-out infinite;
+        pointer-events: none;
     }}
 
     /* Enhanced imperial box */
@@ -486,11 +436,13 @@ st.markdown(f"""
         box-shadow: 0 0 60px #ff0000, inset 0 0 40px rgba(255, 0, 0, 0.2);
         margin: 20px auto;
         position: relative;
+        animation: pulse-red 2s ease-in-out infinite;
     }}
     .imperial-box .empire-icon {{
-        font-size: 80px;
+        font-size: 100px;
         margin-bottom: 20px;
-        filter: drop-shadow(0 0 20px #ff0000);
+        filter: drop-shadow(0 0 30px #ff0000);
+        animation: glow-pulse 2s ease-in-out infinite;
     }}
 
     /* Level badge */
@@ -558,18 +510,21 @@ def render_live_timer(game_start_time):
                 var timeString = mins + ':' + (secs < 10 ? '0' : '') + secs;
 
                 // Color and styling based on time remaining
-                var color, glow, pulse;
+                var color, glow, bgGlow, pulse;
                 if (remaining <= 10) {{
                     color = '#ff0000';
                     glow = '0 0 30px #ff0000, 0 0 60px #ff0000';
+                    bgGlow = '0 0 50px rgba(255, 0, 0, 0.3), inset 0 0 30px rgba(255, 0, 0, 0.2)';
                     pulse = 'pulse-timer 0.5s ease-in-out infinite';
                 }} else if (remaining <= 20) {{
                     color = '#ffaa00';
                     glow = '0 0 20px #ffaa00';
+                    bgGlow = '0 0 30px rgba(255, 170, 0, 0.3)';
                     pulse = 'none';
                 }} else {{
                     color = '#00ff41';
                     glow = '0 0 10px #00ff41';
+                    bgGlow = '0 0 20px rgba(0, 255, 65, 0.2)';
                     pulse = 'none';
                 }}
 
@@ -577,6 +532,7 @@ def render_live_timer(game_start_time):
                 timerElement.style.color = color;
                 timerElement.style.borderColor = color;
                 timerElement.style.textShadow = glow;
+                timerElement.style.boxShadow = bgGlow;
                 timerElement.style.animation = pulse;
 
                 if (remaining > 0) {{
@@ -588,7 +544,7 @@ def render_live_timer(game_start_time):
         }})();
         </script>
     """
-    st.components.v1.html(timer_html, height=100)
+    st.components.v1.html(timer_html, height=140)
 
 def render_pipeline(stage=0, halted=False, breached=False):
     stages = ["BUILD", "TEST", "SCAN", "DEPLOY"]
@@ -708,7 +664,7 @@ st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; let
 # ==================== LOGIN SCREEN ====================
 if not st.session_state.pilot_name:
     st.markdown("""
-        <div style="text-align:center; margin: 40px 0 20px 0;">
+        <div style="text-align:center; margin: 40px 0 30px 0;">
             <div style="font-size: 80px; margin-bottom: 10px; animation: float-up 3s ease-in-out infinite;">&#9760;&#65039;</div>
             <h1 style="color:#00ff41 !important; font-size: 42px; letter-spacing: 6px; text-shadow: 0 0 20px #00ff41;">AI KILL-SWITCH</h1>
             <p style="color:#00ff41aa; font-size: 18px; letter-spacing: 3px;">SURVIVAL CHALLENGE</p>
@@ -716,7 +672,7 @@ if not st.session_state.pilot_name:
     """, unsafe_allow_html=True)
 
     st.markdown("""
-        <div style="max-width: 550px; margin: 0 auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
+        <div style="max-width: 550px; margin: 0 auto 40px auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
             <p style="color: #00ff41aa; font-size: 14px; text-align: center; line-height: 2;">
                 &#128680; An AI Agent is pushing code to production at <strong style="color:#ff4444;">10x speed</strong>.<br>
                 &#127919; Your mission: <strong style="color:#ff4444;">KILL</strong> the pipeline when you spot a real threat.<br>
@@ -727,6 +683,7 @@ if not st.session_state.pilot_name:
         </div>
     """, unsafe_allow_html=True)
 
+    st.markdown('<div style="max-width: 450px; margin: 0 auto;">', unsafe_allow_html=True)
     with st.form("login"):
         name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK")
         if st.form_submit_button("&#128640; INITIATE SEQUENCE"):
@@ -737,6 +694,7 @@ if not st.session_state.pilot_name:
                 st.session_state.current_threat = challenges[0]
                 st.session_state.game_start_time = time.time()
                 st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ==================== ACTIVE GAME (5 LEVELS) ====================
 elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
@@ -873,11 +831,17 @@ else:
     show_galactic_fx(st.session_state.score >= 100)
 
     if st.session_state.score < 100:
-        # Play Darth Vader breathing
-        play_darth_vader_breathing()
+        # Play Darth Vader voice
+        play_audio("Voicy_Darth Vader Have you now.mp3", loop=False, volume=0.5, audio_id="vader-voice")
 
         st.markdown(f"""
             <div class="imperial-box">
+                <div class="particle" style="top: 15%; left: 20%; animation-delay: 0s; color: #ff0000;">💀</div>
+                <div class="particle" style="top: 25%; right: 25%; animation-delay: 0.7s; color: #ff4444;">💥</div>
+                <div class="particle" style="top: 45%; left: 15%; animation-delay: 1.4s; color: #ff0000;">🔥</div>
+                <div class="particle" style="top: 55%; right: 20%; animation-delay: 2.1s; color: #ff4444;">💀</div>
+                <div class="particle" style="top: 75%; left: 30%; animation-delay: 2.8s; color: #ff0000;">💥</div>
+
                 <div class="empire-icon">&#9760;&#65039;</div>
                 <h1 style="color:#ff0000 !important; font-size: 38px; text-shadow: 0 0 20px #ff0000;">IMPERIAL OCCUPATION</h1>
                 <h2 style="color:white !important; font-size: 28px; margin: 20px 0;">{st.session_state.pilot_name.upper()}</h2>
@@ -891,14 +855,16 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-        # Star Wars Empire video
-        st.markdown('<div class="video-container">', unsafe_allow_html=True)
-        st.video("https://www.youtube.com/watch?v=hNv5sPu0C1E")  # Imperial March scene
-        st.markdown('</div>', unsafe_allow_html=True)
-
     else:
         st.markdown(f"""
             <div class="certificate-box">
+                <div class="particle" style="top: 10%; left: 15%; animation-delay: 0s;">✨</div>
+                <div class="particle" style="top: 20%; right: 20%; animation-delay: 0.5s;">⭐</div>
+                <div class="particle" style="top: 40%; left: 10%; animation-delay: 1s;">💫</div>
+                <div class="particle" style="top: 60%; right: 15%; animation-delay: 1.5s;">✨</div>
+                <div class="particle" style="top: 70%; left: 25%; animation-delay: 2s;">🌟</div>
+                <div class="particle" style="top: 30%; right: 30%; animation-delay: 2.5s;">💫</div>
+
                 <div class="stars">&#11088; &#127775; &#11088;</div>
                 <h1 style="color:#00ff41 !important; font-size: 40px; text-shadow: 0 0 20px #00ff41;">REPUBLIC COMMENDATION</h1>
                 <h2 style="color:#00ff41 !important; font-size: 30px; margin: 20px 0; position: relative; z-index: 1;">{st.session_state.pilot_name.upper()}</h2>
@@ -911,11 +877,6 @@ else:
                 </p>
             </div>
         """, unsafe_allow_html=True)
-
-        # Star Wars victory video
-        st.markdown('<div class="video-container">', unsafe_allow_html=True)
-        st.video("https://www.youtube.com/watch?v=rrhlXKwGq7U")  # Star Wars victory celebration
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # Scoring breakdown
     st.markdown("""
