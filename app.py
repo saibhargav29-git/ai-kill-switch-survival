@@ -127,38 +127,61 @@ def play_sound_effect(effect_type):
             var effectType = "{effect_type}";
 
             if (effectType === "success") {{
-                // Success: Rising tone
+                // Success: Rising tone - LOUDER
                 var oscillator = audioContext.createOscillator();
                 var gainNode = audioContext.createGain();
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
                 oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.6, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.3);
             }} else if (effectType === "fail") {{
-                // Fail: Descending alarm
+                // Fail: Descending alarm - LOUDER
                 var oscillator = audioContext.createOscillator();
                 var gainNode = audioContext.createGain();
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
                 oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.4);
-                gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.4);
+            }} else if (effectType === "too_early") {{
+                // Too Early: Warning beep
+                var oscillator = audioContext.createOscillator();
+                var gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(250, audioContext.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.6, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+                // Second beep
+                var osc2 = audioContext.createOscillator();
+                var gain2 = audioContext.createGain();
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                osc2.frequency.setValueAtTime(300, audioContext.currentTime + 0.25);
+                osc2.frequency.exponentialRampToValueAtTime(250, audioContext.currentTime + 0.45);
+                gain2.gain.setValueAtTime(0.6, audioContext.currentTime + 0.25);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.45);
+                osc2.start(audioContext.currentTime + 0.25);
+                osc2.stop(audioContext.currentTime + 0.45);
             }} else if (effectType === "breach") {{
-                // Breach: Rapid alarm beeps
+                // Breach: Rapid alarm beeps - LOUDER
                 for (var i = 0; i < 3; i++) {{
                     var osc = audioContext.createOscillator();
                     var gain = audioContext.createGain();
                     osc.connect(gain);
                     gain.connect(audioContext.destination);
                     osc.frequency.value = 1000;
-                    gain.gain.setValueAtTime(0.3, audioContext.currentTime + i * 0.15);
+                    gain.gain.setValueAtTime(0.6, audioContext.currentTime + i * 0.15);
                     gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.15 + 0.1);
                     osc.start(audioContext.currentTime + i * 0.15);
                     osc.stop(audioContext.currentTime + i * 0.15 + 0.1);
@@ -251,18 +274,41 @@ st.markdown(f"""
         transform: scale(0.95);
     }}
 
-    /* Live timer display - enhanced */
+    /* Live timer display - spaceship cockpit style */
     .live-timer {{
         font-family: 'Courier New', monospace;
         font-size: 80px;
         font-weight: bold;
         text-align: center;
-        padding: 20px;
-        border: 4px solid;
-        border-radius: 15px;
+        padding: 25px 30px;
+        border: 6px solid;
+        border-radius: 20px;
         margin: 20px 0;
-        background: rgba(0, 0, 0, 0.5);
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%);
         letter-spacing: 8px;
+        position: relative;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+    }}
+    .live-timer::before {{
+        content: '⏱';
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 30px;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 0 15px;
+    }}
+    .live-timer::after {{
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        pointer-events: none;
     }}
 
     /* Pipeline visualization - enhanced */
@@ -618,7 +664,7 @@ def handle_kill_switch():
         st.session_state.score -= 25
         st.session_state.status = "fail"
         st.session_state.info_override = "TOO EARLY! The malicious code hadn't manifested yet. Wait for the threat to appear."
-        st.session_state.sound_effect = "fail"
+        st.session_state.sound_effect = "too_early"
     else:
         # FALSE ALARM: Code was clean
         st.session_state.score -= 50
@@ -697,7 +743,7 @@ if not st.session_state.pilot_name:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==================== ACTIVE GAME (5 LEVELS) ====================
-elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
+elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
     remaining = get_remaining_time()
 
     # Check if time expired
@@ -808,7 +854,7 @@ elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
                 render_endor_insight(challenge.get("endor_message", ""))
 
 # ==================== FINALE ====================
-else:
+elif st.session_state.pilot_name:
     if not st.session_state.db_updated:
         try:
             supabase.table("leaderboard").insert({
@@ -834,49 +880,59 @@ else:
         # Play Darth Vader voice
         play_audio("Voicy_Darth Vader Have you now.mp3", loop=False, volume=0.5, audio_id="vader-voice")
 
-        st.markdown(f"""
-            <div class="imperial-box">
-                <div class="particle" style="top: 15%; left: 20%; animation-delay: 0s; color: #ff0000;">💀</div>
-                <div class="particle" style="top: 25%; right: 25%; animation-delay: 0.7s; color: #ff4444;">💥</div>
-                <div class="particle" style="top: 45%; left: 15%; animation-delay: 1.4s; color: #ff0000;">🔥</div>
-                <div class="particle" style="top: 55%; right: 20%; animation-delay: 2.1s; color: #ff4444;">💀</div>
-                <div class="particle" style="top: 75%; left: 30%; animation-delay: 2.8s; color: #ff0000;">💥</div>
+        # Build the HTML string safely
+        pilot_upper = st.session_state.pilot_name.upper()
+        score_val = st.session_state.score
 
-                <div class="empire-icon">&#9760;&#65039;</div>
-                <h1 style="color:#ff0000 !important; font-size: 38px; text-shadow: 0 0 20px #ff0000;">IMPERIAL OCCUPATION</h1>
-                <h2 style="color:white !important; font-size: 28px; margin: 20px 0;">{st.session_state.pilot_name.upper()}</h2>
-                <hr style="border: 2px solid #ff0000; margin: 20px 0;">
-                <h3 style="color:white !important; font-size: 32px; text-shadow: 0 0 15px #ff0000;">FINAL SCORE: {st.session_state.score}</h3>
-                <p style="color:#ff9999; font-size: 16px; margin-top: 20px; line-height: 1.8;">
-                    &#128680; Without <strong>Endor Labs</strong>, you can't tell real threats from false alarms.<br>
-                    &#128737; <strong>Reachability analysis</strong> is your only safety harness in the AI era.<br>
-                    &#9760;&#65039; The Empire has taken control of your pipeline.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        imperial_html = f"""
+<div class="imperial-box">
+    <div class="particle" style="top: 15%; left: 20%; animation-delay: 0s; color: #ff0000;">💀</div>
+    <div class="particle" style="top: 25%; right: 25%; animation-delay: 0.7s; color: #ff4444;">💥</div>
+    <div class="particle" style="top: 45%; left: 15%; animation-delay: 1.4s; color: #ff0000;">🔥</div>
+    <div class="particle" style="top: 55%; right: 20%; animation-delay: 2.1s; color: #ff4444;">💀</div>
+    <div class="particle" style="top: 75%; left: 30%; animation-delay: 2.8s; color: #ff0000;">💥</div>
+
+    <div class="empire-icon">&#9760;&#65039;</div>
+    <h1 style="color:#ff0000 !important; font-size: 38px; text-shadow: 0 0 20px #ff0000;">IMPERIAL OCCUPATION</h1>
+    <h2 style="color:white !important; font-size: 28px; margin: 20px 0;">{pilot_upper}</h2>
+    <hr style="border: 2px solid #ff0000; margin: 20px 0;">
+    <h3 style="color:white !important; font-size: 32px; text-shadow: 0 0 15px #ff0000;">FINAL SCORE: {score_val}</h3>
+    <p style="color:#ff9999; font-size: 16px; margin-top: 20px; line-height: 1.8;">
+        &#128680; Without <strong>Endor Labs</strong>, you can't tell real threats from false alarms.<br>
+        &#128737; <strong>Reachability analysis</strong> is your only safety harness in the AI era.<br>
+        &#9760;&#65039; The Empire has taken control of your pipeline.
+    </p>
+</div>
+"""
+        st.markdown(imperial_html, unsafe_allow_html=True)
 
     else:
-        st.markdown(f"""
-            <div class="certificate-box">
-                <div class="particle" style="top: 10%; left: 15%; animation-delay: 0s;">✨</div>
-                <div class="particle" style="top: 20%; right: 20%; animation-delay: 0.5s;">⭐</div>
-                <div class="particle" style="top: 40%; left: 10%; animation-delay: 1s;">💫</div>
-                <div class="particle" style="top: 60%; right: 15%; animation-delay: 1.5s;">✨</div>
-                <div class="particle" style="top: 70%; left: 25%; animation-delay: 2s;">🌟</div>
-                <div class="particle" style="top: 30%; right: 30%; animation-delay: 2.5s;">💫</div>
+        # Build the HTML string safely
+        pilot_upper = st.session_state.pilot_name.upper()
+        score_val = st.session_state.score
 
-                <div class="stars">&#11088; &#127775; &#11088;</div>
-                <h1 style="color:#00ff41 !important; font-size: 40px; text-shadow: 0 0 20px #00ff41;">REPUBLIC COMMENDATION</h1>
-                <h2 style="color:#00ff41 !important; font-size: 30px; margin: 20px 0; position: relative; z-index: 1;">{st.session_state.pilot_name.upper()}</h2>
-                <hr style="border: 2px solid #00ff41; margin: 20px 0;">
-                <h3 style="color:white !important; font-size: 34px; text-shadow: 0 0 15px #00ff41; position: relative; z-index: 1;">FINAL SCORE: {st.session_state.score}</h3>
-                <p style="color:#00ff41aa; font-size: 16px; margin-top: 20px; line-height: 1.8; position: relative; z-index: 1;">
-                    &#127942; You separated real threats from noise &mdash; just like <strong>Endor Labs</strong>.<br>
-                    &#128737; <strong>Reachability-powered security.</strong> No false alarms. No missed threats.<br>
-                    &#11088; May the Force be with your pipeline.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        victory_html = f"""
+<div class="certificate-box">
+    <div class="particle" style="top: 10%; left: 15%; animation-delay: 0s;">✨</div>
+    <div class="particle" style="top: 20%; right: 20%; animation-delay: 0.5s;">⭐</div>
+    <div class="particle" style="top: 40%; left: 10%; animation-delay: 1s;">💫</div>
+    <div class="particle" style="top: 60%; right: 15%; animation-delay: 1.5s;">✨</div>
+    <div class="particle" style="top: 70%; left: 25%; animation-delay: 2s;">🌟</div>
+    <div class="particle" style="top: 30%; right: 30%; animation-delay: 2.5s;">💫</div>
+
+    <div class="stars">&#11088; &#127775; &#11088;</div>
+    <h1 style="color:#00ff41 !important; font-size: 40px; text-shadow: 0 0 20px #00ff41;">REPUBLIC COMMENDATION</h1>
+    <h2 style="color:#00ff41 !important; font-size: 30px; margin: 20px 0; position: relative; z-index: 1;">{pilot_upper}</h2>
+    <hr style="border: 2px solid #00ff41; margin: 20px 0;">
+    <h3 style="color:white !important; font-size: 34px; text-shadow: 0 0 15px #00ff41; position: relative; z-index: 1;">FINAL SCORE: {score_val}</h3>
+    <p style="color:#00ff41aa; font-size: 16px; margin-top: 20px; line-height: 1.8; position: relative; z-index: 1;">
+        &#127942; You separated real threats from noise &mdash; just like <strong>Endor Labs</strong>.<br>
+        &#128737; <strong>Reachability-powered security.</strong> No false alarms. No missed threats.<br>
+        &#11088; May the Force be with your pipeline.
+    </p>
+</div>
+"""
+        st.markdown(victory_html, unsafe_allow_html=True)
 
     # Scoring breakdown
     st.markdown("""
