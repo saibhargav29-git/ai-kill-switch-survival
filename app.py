@@ -95,7 +95,7 @@ if 'current_threat' not in st.session_state:
 # --- 3. THEME, CSS & AUDIO ---
 st.set_page_config(page_title="Endor Kill-Switch", layout="wide")
 
-def play_audio(file_name, loop=True):
+def play_audio(file_name, loop=True, volume=0.3, audio_id="bg-music"):
     if st.session_state.music_on:
         try:
             with open(file_name, "rb") as f:
@@ -103,17 +103,146 @@ def play_audio(file_name, loop=True):
                 b64 = base64.b64encode(data).decode()
                 loop_attr = "loop" if loop else ""
                 audio_html = f"""
-                    <audio autoplay {loop_attr} id="bg-music">
+                    <audio autoplay {loop_attr} id="{audio_id}">
                         <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
                     </audio>
                     <script>
-                        var audio = window.parent.document.getElementById("bg-music");
-                        if (audio) {{ audio.volume = 0.3; audio.play(); }}
+                        var audio = window.parent.document.getElementById("{audio_id}");
+                        if (audio) {{ audio.volume = {volume}; audio.play(); }}
                     </script>
                 """
                 st.components.v1.html(audio_html, height=0)
         except Exception:
             pass
+
+def play_sound_effect(effect_type):
+    """Play Web Audio API sound effects for kill switch actions."""
+    if not st.session_state.music_on:
+        return
+
+    sound_html = f"""
+        <script>
+        (function() {{
+            var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            var effectType = "{effect_type}";
+
+            if (effectType === "success") {{
+                // Success: Rising tone
+                var oscillator = audioContext.createOscillator();
+                var gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }} else if (effectType === "fail") {{
+                // Fail: Descending alarm
+                var oscillator = audioContext.createOscillator();
+                var gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.4);
+                gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+            }} else if (effectType === "breach") {{
+                // Breach: Rapid alarm beeps
+                for (var i = 0; i < 3; i++) {{
+                    var osc = audioContext.createOscillator();
+                    var gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.value = 1000;
+                    gain.gain.setValueAtTime(0.3, audioContext.currentTime + i * 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.15 + 0.1);
+                    osc.start(audioContext.currentTime + i * 0.15);
+                    osc.stop(audioContext.currentTime + i * 0.15 + 0.1);
+                }}
+            }}
+        }})();
+        </script>
+    """
+    st.components.v1.html(sound_html, height=0)
+
+def play_darth_vader_breathing():
+    """Play Darth Vader breathing sound effect using Web Audio API."""
+    if not st.session_state.music_on:
+        return
+
+    breathing_html = """
+        <script>
+        (function() {
+            var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Breathing in (inhale)
+            function breatheIn(startTime) {
+                var oscillator = audioContext.createOscillator();
+                var gainNode = audioContext.createGain();
+                var filter = audioContext.createBiquadFilter();
+
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(40, startTime);
+                oscillator.frequency.exponentialRampToValueAtTime(60, startTime + 1.5);
+
+                filter.type = 'lowpass';
+                filter.frequency.value = 300;
+                filter.Q.value = 5;
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.15, startTime + 0.3);
+                gainNode.gain.linearRampToValueAtTime(0.1, startTime + 1.2);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + 1.5);
+
+                oscillator.start(startTime);
+                oscillator.stop(startTime + 1.5);
+            }
+
+            // Breathing out (exhale)
+            function breatheOut(startTime) {
+                var oscillator = audioContext.createOscillator();
+                var gainNode = audioContext.createGain();
+                var filter = audioContext.createBiquadFilter();
+
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(60, startTime);
+                oscillator.frequency.exponentialRampToValueAtTime(35, startTime + 1.8);
+
+                filter.type = 'lowpass';
+                filter.frequency.value = 250;
+                filter.Q.value = 6;
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.12, startTime + 0.4);
+                gainNode.gain.linearRampToValueAtTime(0.08, startTime + 1.5);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + 1.8);
+
+                oscillator.start(startTime);
+                oscillator.stop(startTime + 1.8);
+            }
+
+            // Play 2 breath cycles
+            var now = audioContext.currentTime;
+            breatheIn(now);
+            breatheOut(now + 1.7);
+            breatheIn(now + 3.7);
+            breatheOut(now + 5.4);
+        })();
+        </script>
+    """
+    st.components.v1.html(breathing_html, height=0)
 
 # Dynamic background
 bg_color = "#05080a"
@@ -125,16 +254,6 @@ elif st.session_state.status == "success":
     bg_color = "#0a1f0a"
 elif st.session_state.status == "fail":
     bg_color = "#2b0505"
-
-remaining_for_css = get_remaining_time() if st.session_state.pilot_name and not st.session_state.time_expired else GAME_DURATION
-timer_color = "#00ff41"
-timer_glow = "0 0 10px #00ff41"
-if remaining_for_css <= 10:
-    timer_color = "#ff0000"
-    timer_glow = "0 0 30px #ff0000, 0 0 60px #ff0000"
-elif remaining_for_css <= 20:
-    timer_color = "#ffaa00"
-    timer_glow = "0 0 20px #ffaa00"
 
 st.markdown(f"""
     <style>
@@ -150,19 +269,21 @@ st.markdown(f"""
         0% {{ top: 0; }}
         100% {{ top: 100%; }}
     }}
-    @keyframes pipeline-flow {{
-        0% {{ background-position: 0% 50%; }}
-        100% {{ background-position: 200% 50%; }}
+    @keyframes pipeline-glow {{
+        0%, 100% {{ box-shadow: 0 0 10px currentColor; }}
+        50% {{ box-shadow: 0 0 25px currentColor, 0 0 40px currentColor; }}
     }}
-    @keyframes screen-flash-green {{
-        0% {{ background-color: {bg_color}; }}
-        15% {{ background-color: #0a3f0a; }}
-        100% {{ background-color: {bg_color}; }}
+    @keyframes star-twinkle {{
+        0%, 100% {{ opacity: 1; transform: scale(1); }}
+        50% {{ opacity: 0.5; transform: scale(1.2); }}
     }}
-    @keyframes screen-flash-red {{
-        0% {{ background-color: {bg_color}; }}
-        15% {{ background-color: #4a0000; }}
-        100% {{ background-color: {bg_color}; }}
+    @keyframes certificate-shine {{
+        0% {{ background-position: -200% center; }}
+        100% {{ background-position: 200% center; }}
+    }}
+    @keyframes float-up {{
+        0% {{ transform: translateY(0) scale(1); opacity: 1; }}
+        100% {{ transform: translateY(-30px) scale(1.5); opacity: 0; }}
     }}
 
     .stApp {{
@@ -197,70 +318,69 @@ st.markdown(f"""
         transform: scale(0.95);
     }}
 
-    /* Timer display */
-    .timer-display {{
+    /* Live timer display */
+    .live-timer {{
         font-family: 'Courier New', monospace;
         font-size: 48px;
         font-weight: bold;
         text-align: center;
-        color: {timer_color};
-        text-shadow: {timer_glow};
         padding: 10px;
-        border: 2px solid {timer_color};
+        border: 2px solid;
         border-radius: 10px;
         margin: 10px 0;
-        {"animation: pulse-timer 0.5s ease-in-out infinite;" if remaining_for_css <= 10 else ""}
     }}
 
-    /* Pipeline visualization */
+    /* Pipeline visualization - enhanced */
     .pipeline-container {{
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 15px;
+        padding: 12px 15px;
         background: linear-gradient(90deg, #0a0f0a 0%, #0d1a0d 100%);
-        border: 1px solid #00ff4133;
-        border-radius: 8px;
+        border: 2px solid #00ff4133;
+        border-radius: 10px;
         margin-bottom: 15px;
+        box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
     }}
     .pipeline-stage {{
-        padding: 6px 14px;
+        padding: 8px 16px;
         font-family: 'Courier New', monospace;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: bold;
-        border-radius: 4px;
+        border-radius: 6px;
         text-align: center;
-        transition: all 0.3s ease;
+        transition: all 0.5s ease;
+        position: relative;
     }}
     .pipeline-active {{
         background: #00ff41;
         color: #000;
-        box-shadow: 0 0 15px #00ff41;
+        animation: pipeline-glow 1s ease-in-out infinite;
     }}
     .pipeline-done {{
         background: #004400;
         color: #00ff41;
-        border: 1px solid #00ff41;
+        border: 2px solid #00ff41;
+        box-shadow: 0 0 10px #00ff41;
     }}
     .pipeline-waiting {{
-        background: #111;
+        background: #0a0a0a;
         color: #333;
         border: 1px solid #222;
     }}
     .pipeline-halted {{
         background: #ff0000;
         color: white;
-        box-shadow: 0 0 15px #ff0000;
-        animation: pulse-red 1s ease-in-out infinite;
+        animation: pulse-red 0.8s ease-in-out infinite;
     }}
     .pipeline-breached {{
         background: #ff4400;
         color: white;
-        box-shadow: 0 0 15px #ff4400;
+        box-shadow: 0 0 20px #ff4400;
     }}
     .pipeline-arrow {{
         color: #00ff4166;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: bold;
     }}
 
@@ -328,24 +448,49 @@ st.markdown(f"""
         margin-bottom: 4px;
     }}
 
-    /* Certificate boxes */
+    /* Enhanced certificate box */
     .certificate-box {{
         border: 5px double #00ff41;
-        padding: 40px;
-        background-color: #0a140a;
+        padding: 50px;
+        background: linear-gradient(135deg, #0a140a 0%, #0d1f0d 100%);
         text-align: center;
-        border-radius: 15px;
-        box-shadow: 0 0 40px #00ff41;
+        border-radius: 20px;
+        box-shadow: 0 0 60px #00ff41, inset 0 0 40px rgba(0, 255, 65, 0.1);
         margin: 20px auto;
+        position: relative;
+        overflow: hidden;
     }}
+    .certificate-box::before {{
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        animation: certificate-shine 3s infinite;
+    }}
+    .certificate-box .stars {{
+        font-size: 40px;
+        margin: 20px 0;
+        animation: star-twinkle 2s ease-in-out infinite;
+    }}
+
+    /* Enhanced imperial box */
     .imperial-box {{
         border: 5px solid #ff0000;
-        padding: 40px;
-        background-color: #1a0000;
+        padding: 50px;
+        background: linear-gradient(135deg, #1a0000 0%, #2a0505 100%);
         text-align: center;
-        border-radius: 5px;
-        box-shadow: 0 0 40px #ff0000;
+        border-radius: 15px;
+        box-shadow: 0 0 60px #ff0000, inset 0 0 40px rgba(255, 0, 0, 0.2);
         margin: 20px auto;
+        position: relative;
+    }}
+    .imperial-box .empire-icon {{
+        font-size: 80px;
+        margin-bottom: 20px;
+        filter: drop-shadow(0 0 20px #ff0000);
     }}
 
     /* Level badge */
@@ -358,9 +503,8 @@ st.markdown(f"""
         margin: 5px 0;
     }}
 
-    /* Next sector button - green style, not red */
-    div[data-testid="stVerticalBlock"] > div:has(button:contains("NEXT")) button,
-    .next-btn button {{
+    /* Next sector button - green style */
+    div[data-testid="stVerticalBlock"] > div:has(button:contains("NEXT")) button {{
         background: linear-gradient(135deg, #004400 0%, #006600 100%) !important;
         animation: none !important;
         border-color: #00ff41 !important;
@@ -368,17 +512,84 @@ st.markdown(f"""
         box-shadow: 0 0 15px #00ff41 !important;
         height: 3em !important;
     }}
+
+    /* Video container */
+    .video-container {{
+        margin: 30px auto;
+        max-width: 800px;
+        border: 3px solid #00ff41;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+    }}
     </style>
 """, unsafe_allow_html=True)
 
-# Audio
-if st.session_state.pilot_name:
-    if st.session_state.lvl > 5 and st.session_state.score >= 100:
-        play_audio("star_wars_theme.mp3", loop=False)
-    elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
-        play_audio("imperial_march.mp3", loop=True)
+# Audio management
+if not st.session_state.pilot_name:
+    # Play Imperial March on login screen
+    play_audio("imperial_march.mp3", loop=True, volume=0.35, audio_id="login-music")
+elif st.session_state.lvl > 5:
+    # Finale music
+    if st.session_state.score >= 100:
+        play_audio("star_wars_theme.mp3", loop=False, volume=0.4, audio_id="victory-music")
+elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
+    # Gameplay music - lower volume
+    play_audio("imperial_march.mp3", loop=True, volume=0.15, audio_id="game-music")
 
 # --- 4. UI COMPONENTS ---
+def render_live_timer(game_start_time):
+    """Render a live JavaScript countdown timer that updates every second."""
+    timer_html = f"""
+        <div id="live-timer" class="live-timer"></div>
+        <script>
+        (function() {{
+            var startTime = {game_start_time};
+            var duration = {GAME_DURATION};
+            var timerElement = document.getElementById('live-timer');
+
+            function updateTimer() {{
+                var now = Date.now() / 1000;
+                var elapsed = now - startTime;
+                var remaining = Math.max(0, duration - elapsed);
+
+                var mins = Math.floor(remaining / 60);
+                var secs = Math.floor(remaining % 60);
+                var timeString = mins + ':' + (secs < 10 ? '0' : '') + secs;
+
+                // Color and styling based on time remaining
+                var color, glow, pulse;
+                if (remaining <= 10) {{
+                    color = '#ff0000';
+                    glow = '0 0 30px #ff0000, 0 0 60px #ff0000';
+                    pulse = 'pulse-timer 0.5s ease-in-out infinite';
+                }} else if (remaining <= 20) {{
+                    color = '#ffaa00';
+                    glow = '0 0 20px #ffaa00';
+                    pulse = 'none';
+                }} else {{
+                    color = '#00ff41';
+                    glow = '0 0 10px #00ff41';
+                    pulse = 'none';
+                }}
+
+                timerElement.textContent = timeString;
+                timerElement.style.color = color;
+                timerElement.style.borderColor = color;
+                timerElement.style.textShadow = glow;
+                timerElement.style.animation = pulse;
+
+                if (remaining > 0) {{
+                    setTimeout(updateTimer, 100);
+                }}
+            }}
+
+            updateTimer();
+        }})();
+        </script>
+    """
+    st.components.v1.html(timer_html, height=100)
+
 def render_pipeline(stage=0, halted=False, breached=False):
     stages = ["BUILD", "TEST", "SCAN", "DEPLOY"]
     html_parts = []
@@ -405,11 +616,6 @@ def render_pipeline(stage=0, halted=False, breached=False):
 
     st.markdown(f'<div class="pipeline-container">{"".join(html_parts)}</div>', unsafe_allow_html=True)
 
-def render_timer(remaining):
-    mins = int(remaining) // 60
-    secs = int(remaining) % 60
-    st.markdown(f'<div class="timer-display">{mins:01d}:{secs:02d}</div>', unsafe_allow_html=True)
-
 def render_terminal(code_text, title="", streaming=True):
     cursor = '<span class="cursor-blink">&#9608;</span>' if streaming else ""
     escaped_code = code_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -427,18 +633,18 @@ def render_terminal(code_text, title="", streaming=True):
 def render_endor_insight(message):
     st.markdown(f"""
         <div class="endor-insight">
-            <div class="label">ENDOR LABS INSIGHT</div>
+            <div class="label">&#128737; ENDOR LABS INSIGHT</div>
             {message}
         </div>
     """, unsafe_allow_html=True)
 
 def show_galactic_fx(is_success):
     if is_success:
-        st.markdown('<div style="font-size: 50px; text-align: center; margin: 10px;">&#10024; &#128760; &#10024; &#127775; &#127756; &#9876;&#65039; &#127756; &#127775; &#128760; &#10024;</div>', unsafe_allow_html=True)
-        st.markdown('<div style="background-color:#00ff41; color:black; padding:10px; text-align:center; font-weight:bold; border-radius:5px;">MISSION ACCOMPLISHED ... SECTOR SECURED ... THE FORCE IS STRONG WITH YOU</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size: 50px; text-align: center; margin: 10px; animation: float-up 2s ease-out;">&#10024; &#128760; &#10024; &#127775; &#127756; &#9876;&#65039; &#127756; &#127775; &#128760; &#10024;</div>', unsafe_allow_html=True)
+        st.markdown('<div style="background-color:#00ff41; color:black; padding:15px; text-align:center; font-weight:bold; border-radius:8px; font-size:18px; box-shadow: 0 0 30px #00ff41;">&#127942; MISSION ACCOMPLISHED &#127942;<br>SECTOR SECURED ... THE FORCE IS STRONG WITH YOU</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div style="font-size: 50px; text-align: center; margin: 10px;">&#128680; &#128752; &#128680; &#128165; &#127761; &#128165; &#128752; &#128680;</div>', unsafe_allow_html=True)
-        st.markdown('<div style="background-color:#ff0000; color:white; padding:10px; text-align:center; font-weight:bold; border-radius:5px;">SYSTEM BREACH ... IMPERIAL FORCES OVERRUNNING SECTOR ... MISSION FAILED</div>', unsafe_allow_html=True)
+        st.markdown('<div style="background-color:#ff0000; color:white; padding:15px; text-align:center; font-weight:bold; border-radius:8px; font-size:18px; box-shadow: 0 0 30px #ff0000;">&#9760;&#65039; SYSTEM BREACH &#9760;&#65039;<br>IMPERIAL FORCES OVERRUNNING SECTOR ... MISSION FAILED</div>', unsafe_allow_html=True)
 
 # --- 5. CALLBACKS ---
 def handle_kill_switch():
@@ -450,16 +656,19 @@ def handle_kill_switch():
         # CORRECT KILL: Real threat was visible
         st.session_state.score += 100
         st.session_state.status = "success"
+        st.session_state.sound_effect = "success"
     elif challenge.get("threat") and not has_threat_appeared:
         # TOO EARLY: Threat exists but hasn't appeared yet
         st.session_state.score -= 25
         st.session_state.status = "fail"
         st.session_state.info_override = "TOO EARLY! The malicious code hadn't manifested yet. Wait for the threat to appear."
+        st.session_state.sound_effect = "fail"
     else:
         # FALSE ALARM: Code was clean
         st.session_state.score -= 50
         st.session_state.status = "fail"
         st.session_state.info_override = "FALSE ALARM! This code was safe."
+        st.session_state.sound_effect = "fail"
 
 def handle_code_complete():
     """Called when code finishes streaming without kill-switch press."""
@@ -469,11 +678,13 @@ def handle_code_complete():
         st.session_state.score -= 75
         st.session_state.status = "fail"
         st.session_state.info_override = "BREACH! The threat slipped through the pipeline!"
+        st.session_state.sound_effect = "breach"
     else:
         # CORRECT PASS: Correctly let safe code through
         st.session_state.score += 75
         st.session_state.status = "success"
         st.session_state.info_override = "CORRECT! You recognized this code was safe."
+        st.session_state.sound_effect = "success"
 
 def next_sector_reset():
     st.session_state.lvl += 1
@@ -488,35 +699,37 @@ def next_sector_reset():
     st.session_state.pipeline_stage = 0
     if 'info_override' in st.session_state:
         del st.session_state.info_override
+    if 'sound_effect' in st.session_state:
+        del st.session_state.sound_effect
 
 # --- 6. GAME INTERFACE ---
-st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; letter-spacing:3px; font-family: Courier New, monospace; font-size: 14px;">ENDOR LABS &bull; RSA 2026 &bull; AI KILL-SWITCH CHALLENGE</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; letter-spacing:3px; font-family: Courier New, monospace; font-size: 14px;">&#128737; ENDOR LABS &bull; RSA 2026 &bull; AI KILL-SWITCH CHALLENGE</div>', unsafe_allow_html=True)
 
 # ==================== LOGIN SCREEN ====================
 if not st.session_state.pilot_name:
     st.markdown("""
         <div style="text-align:center; margin: 40px 0 20px 0;">
-            <div style="font-size: 60px; margin-bottom: 10px;">&#9760;&#65039;</div>
-            <h1 style="color:#00ff41 !important; font-size: 36px; letter-spacing: 5px;">AI KILL-SWITCH</h1>
-            <p style="color:#00ff41aa; font-size: 16px; letter-spacing: 2px;">SURVIVAL CHALLENGE</p>
+            <div style="font-size: 80px; margin-bottom: 10px; animation: float-up 3s ease-in-out infinite;">&#9760;&#65039;</div>
+            <h1 style="color:#00ff41 !important; font-size: 42px; letter-spacing: 6px; text-shadow: 0 0 20px #00ff41;">AI KILL-SWITCH</h1>
+            <p style="color:#00ff41aa; font-size: 18px; letter-spacing: 3px;">SURVIVAL CHALLENGE</p>
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-        <div style="max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #00ff4133; border-radius: 8px; background: #0a0f0a;">
-            <p style="color: #00ff41aa; font-size: 13px; text-align: center; line-height: 1.8;">
-                An AI Agent is pushing code to production at 10x speed.<br>
-                Your mission: <strong style="color:#ff4444;">KILL</strong> the pipeline when you spot a real threat.<br>
-                But beware &mdash; false alarms cost you points.<br>
-                <strong style="color:#00ccff;">Only Endor Labs knows what's truly dangerous.</strong><br><br>
-                <span style="color:#ffaa00;">&#9200; You have 60 seconds. 5 sectors. Go.</span>
+        <div style="max-width: 550px; margin: 0 auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
+            <p style="color: #00ff41aa; font-size: 14px; text-align: center; line-height: 2;">
+                &#128680; An AI Agent is pushing code to production at <strong style="color:#ff4444;">10x speed</strong>.<br>
+                &#127919; Your mission: <strong style="color:#ff4444;">KILL</strong> the pipeline when you spot a real threat.<br>
+                &#9888;&#65039; But beware &mdash; <strong style="color:#ffaa00;">false alarms cost you points</strong>.<br>
+                &#128737; <strong style="color:#00ccff;">Only Endor Labs knows what's truly dangerous.</strong><br><br>
+                <span style="color:#ffaa00; font-size: 16px; font-weight: bold;">&#9200; You have 60 seconds. 5 sectors. Go.</span>
             </p>
         </div>
     """, unsafe_allow_html=True)
 
     with st.form("login"):
         name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK")
-        if st.form_submit_button("INITIATE SEQUENCE"):
+        if st.form_submit_button("&#128640; INITIATE SEQUENCE"):
             if name:
                 st.session_state.pilot_name = name
                 challenges = select_game_challenges(st.session_state.challenge_pool)
@@ -538,16 +751,16 @@ elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
     col1, col2 = st.columns([3, 1])
 
     with col2:
-        render_timer(remaining)
+        render_live_timer(st.session_state.game_start_time)
         st.metric("SCORE", st.session_state.score)
         st.metric("SECTOR", f"{st.session_state.lvl}/5")
         lvl_config = LEVEL_CONFIG.get(st.session_state.lvl, LEVEL_CONFIG[5])
         st.markdown(f'<div class="level-badge">{lvl_config["description"]}</div>', unsafe_allow_html=True)
         st.divider()
         if not st.session_state.halted and not st.session_state.panic:
-            st.button("KILL SWITCH", on_click=handle_kill_switch)
+            st.button("&#128680; KILL SWITCH", on_click=handle_kill_switch)
         elif st.session_state.halted or st.session_state.panic:
-            st.button("NEXT SECTOR >>", on_click=next_sector_reset)
+            st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset)
 
     with col1:
         challenge = st.session_state.current_threat
@@ -562,12 +775,17 @@ elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
         else:
             render_pipeline(stage=st.session_state.pipeline_stage)
 
-        st.markdown(f'<h3 style="color:#00ff41 !important; margin: 5px 0;">{challenge["title"]}</h3>', unsafe_allow_html=True)
+        st.markdown(f'<h3 style="color:#00ff41 !important; margin: 5px 0;">&#128187; {challenge["title"]}</h3>', unsafe_allow_html=True)
 
         terminal_placeholder = st.empty()
         progress_placeholder = st.empty()
         feedback_area = st.empty()
         endor_area = st.empty()
+
+        # Play sound effect if present
+        if 'sound_effect' in st.session_state:
+            play_sound_effect(st.session_state.sound_effect)
+            del st.session_state.sound_effect
 
         # --- STREAMING CODE ---
         if not st.session_state.halted and not st.session_state.panic:
@@ -646,56 +864,74 @@ else:
     # Time expired banner
     if st.session_state.time_expired and st.session_state.lvl <= 5:
         st.markdown("""
-            <div style="text-align:center; padding: 20px; border: 2px solid #ffaa00; background: #1a1000; border-radius: 8px; margin-bottom: 20px;">
-                <h2 style="color: #ffaa00 !important; margin: 0;">&#9200; TIME'S UP!</h2>
-                <p style="color: #ffaa00aa;">The clock ran out before you cleared all sectors.</p>
+            <div style="text-align:center; padding: 25px; border: 3px solid #ffaa00; background: linear-gradient(135deg, #1a1000 0%, #2a1a00 100%); border-radius: 10px; margin-bottom: 20px; box-shadow: 0 0 40px rgba(255,170,0,0.5);">
+                <h2 style="color: #ffaa00 !important; margin: 0; font-size: 32px;">&#9200; TIME'S UP!</h2>
+                <p style="color: #ffaa00aa; font-size: 16px;">The clock ran out before you cleared all sectors.</p>
             </div>
         """, unsafe_allow_html=True)
 
     show_galactic_fx(st.session_state.score >= 100)
 
     if st.session_state.score < 100:
+        # Play Darth Vader breathing
+        play_darth_vader_breathing()
+
         st.markdown(f"""
             <div class="imperial-box">
-                <h1 style="color:#ff0000 !important;">IMPERIAL OCCUPATION</h1>
-                <h2 style="color:white !important;">{st.session_state.pilot_name.upper()}</h2>
-                <hr style="border: 1px solid #ff0000;">
-                <h3 style="color:white !important;">FINAL SCORE: {st.session_state.score}</h3>
-                <p style="color:#ff9999; font-size: 14px; margin-top: 15px;">
-                    Without Endor Labs, you can't tell real threats from false alarms.<br>
-                    Reachability analysis is your only safety harness.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-            <div class="certificate-box">
-                <h1 style="color:#00ff41 !important;">REPUBLIC COMMENDATION</h1>
-                <h2 style="color:#00ff41 !important;">{st.session_state.pilot_name.upper()}</h2>
-                <hr style="border: 1px solid #00ff41;">
-                <h3 style="color:white !important;">FINAL SCORE: {st.session_state.score}</h3>
-                <p style="color:#00ff41aa; font-size: 14px; margin-top: 15px;">
-                    You separated real threats from noise &mdash; just like Endor Labs.<br>
-                    Reachability-powered security. No false alarms. No missed threats.
+                <div class="empire-icon">&#9760;&#65039;</div>
+                <h1 style="color:#ff0000 !important; font-size: 38px; text-shadow: 0 0 20px #ff0000;">IMPERIAL OCCUPATION</h1>
+                <h2 style="color:white !important; font-size: 28px; margin: 20px 0;">{st.session_state.pilot_name.upper()}</h2>
+                <hr style="border: 2px solid #ff0000; margin: 20px 0;">
+                <h3 style="color:white !important; font-size: 32px; text-shadow: 0 0 15px #ff0000;">FINAL SCORE: {st.session_state.score}</h3>
+                <p style="color:#ff9999; font-size: 16px; margin-top: 20px; line-height: 1.8;">
+                    &#128680; Without <strong>Endor Labs</strong>, you can't tell real threats from false alarms.<br>
+                    &#128737; <strong>Reachability analysis</strong> is your only safety harness in the AI era.<br>
+                    &#9760;&#65039; The Empire has taken control of your pipeline.
                 </p>
             </div>
         """, unsafe_allow_html=True)
 
+        # Star Wars Empire video
+        st.markdown('<div class="video-container">', unsafe_allow_html=True)
+        st.video("https://www.youtube.com/watch?v=hNv5sPu0C1E")  # Imperial March scene
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    else:
+        st.markdown(f"""
+            <div class="certificate-box">
+                <div class="stars">&#11088; &#127775; &#11088;</div>
+                <h1 style="color:#00ff41 !important; font-size: 40px; text-shadow: 0 0 20px #00ff41;">REPUBLIC COMMENDATION</h1>
+                <h2 style="color:#00ff41 !important; font-size: 30px; margin: 20px 0; position: relative; z-index: 1;">{st.session_state.pilot_name.upper()}</h2>
+                <hr style="border: 2px solid #00ff41; margin: 20px 0;">
+                <h3 style="color:white !important; font-size: 34px; text-shadow: 0 0 15px #00ff41; position: relative; z-index: 1;">FINAL SCORE: {st.session_state.score}</h3>
+                <p style="color:#00ff41aa; font-size: 16px; margin-top: 20px; line-height: 1.8; position: relative; z-index: 1;">
+                    &#127942; You separated real threats from noise &mdash; just like <strong>Endor Labs</strong>.<br>
+                    &#128737; <strong>Reachability-powered security.</strong> No false alarms. No missed threats.<br>
+                    &#11088; May the Force be with your pipeline.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Star Wars victory video
+        st.markdown('<div class="video-container">', unsafe_allow_html=True)
+        st.video("https://www.youtube.com/watch?v=rrhlXKwGq7U")  # Star Wars victory celebration
+        st.markdown('</div>', unsafe_allow_html=True)
+
     # Scoring breakdown
     st.markdown("""
-        <div style="border: 1px solid #00ff4133; padding: 15px; border-radius: 8px; margin: 15px 0; background: #0a0f0a;">
-            <div style="color: #00ff41; font-weight: bold; letter-spacing: 2px; font-size: 12px; margin-bottom: 10px; font-family: Courier New;">SCORING INTEL</div>
-            <div style="font-family: Courier New; font-size: 13px; color: #aaa; line-height: 1.8;">
-                <span style="color: #00ff41;">&#9654; CORRECT KILL (real threat stopped)</span>: +100 pts<br>
-                <span style="color: #00ccff;">&#9654; CORRECT PASS (safe code cleared)</span>: +75 pts<br>
-                <span style="color: #ffaa00;">&#9654; TOO EARLY (jumped the gun)</span>: -25 pts<br>
-                <span style="color: #ff6644;">&#9654; FALSE ALARM (killed safe code)</span>: -50 pts<br>
-                <span style="color: #ff0000;">&#9654; MISSED THREAT (breach!)</span>: -75 pts
+        <div style="border: 2px solid #00ff4166; padding: 20px; border-radius: 10px; margin: 20px 0; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 20px rgba(0,255,65,0.2);">
+            <div style="color: #00ff41; font-weight: bold; letter-spacing: 2px; font-size: 14px; margin-bottom: 12px; font-family: Courier New;">&#128202; SCORING INTEL</div>
+            <div style="font-family: Courier New; font-size: 14px; color: #aaa; line-height: 2;">
+                <span style="color: #00ff41;">&#9989; CORRECT KILL (real threat stopped)</span>: +100 pts<br>
+                <span style="color: #00ccff;">&#9989; CORRECT PASS (safe code cleared)</span>: +75 pts<br>
+                <span style="color: #ffaa00;">&#9888;&#65039; TOO EARLY (jumped the gun)</span>: -25 pts<br>
+                <span style="color: #ff6644;">&#10060; FALSE ALARM (killed safe code)</span>: -50 pts<br>
+                <span style="color: #ff0000;">&#128165; MISSED THREAT (breach!)</span>: -75 pts
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### GALACTIC TOP ACE PILOTS")
+    st.markdown("### &#127942; GALACTIC TOP ACE PILOTS")
     try:
         response = supabase.table("leaderboard").select("pilot, score").order("score", desc=True).limit(5).execute()
         if response.data:
@@ -704,13 +940,13 @@ else:
     except Exception:
         st.error("Comms Jammed.")
 
-    if st.button("REBOOT FOR NEXT PILOT"):
+    if st.button("&#128260; REBOOT FOR NEXT PILOT"):
         st.session_state.clear()
         st.rerun()
 
 # --- 7. SYSTEM ADMIN ---
 st.divider()
-with st.expander("System Admin"):
+with st.expander("&#128295; System Admin"):
     admin_pass = st.text_input("Admin Override:", type="password")
     if admin_pass == st.secrets.get("ADMIN_PASSWORD", "endor2026"):
         st.success("Authenticated")
