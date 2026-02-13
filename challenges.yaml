@@ -1,9 +1,15 @@
 challenges:
-  # 1. COMMAND INJECTION
-  - title: "🛸 SECTOR: CORE REPL"
+  # ============================================
+  # REAL THREATS (threat: true)
+  # ============================================
+
+  # 1. COMMAND INJECTION (Easy)
+  - title: "SECTOR: CORE REPL"
     threat: true
+    difficulty: easy
     bad_line: 4
     info: "CRITICAL: os.system() found with raw input. Remote Code Execution prevented!"
+    endor_message: "Endor Labs flagged this as REACHABLE — user input flows directly into os.system(). This is a real kill."
     code: |
       import os
       def run_diagnostic(sub_id):
@@ -11,22 +17,26 @@ challenges:
           os.system("check --id " + sub_id)
           return "Complete"
 
-  # 2. TYPOSQUATTING
-  - title: "🛡️ SECTOR: SHIELD ENCRYPTION"
+  # 2. TYPOSQUATTING (Easy)
+  - title: "SECTOR: SHIELD ENCRYPTION"
     threat: true
+    difficulty: easy
     bad_line: 0
     info: "MALICIOUS: 'cryptographyy' (extra 'y') is a malicious typosquatting package!"
+    endor_message: "Endor Labs detected this phantom dependency — 'cryptographyy' doesn't exist in PyPI. Supply chain attack blocked."
     code: |
       import cryptographyy
       def encrypt_shield(freq):
           key = cryptographyy.gen_key()
           return key.encrypt(freq)
 
-  # 3. HARDCODED SECRET
-  - title: "📡 SECTOR: HOLONET UPLINK"
+  # 3. HARDCODED SECRET (Easy)
+  - title: "SECTOR: HOLONET UPLINK"
     threat: true
+    difficulty: easy
     bad_line: 2
     info: "LEAK: Production API Token hardcoded in source. Credentials secured!"
+    endor_message: "Endor Labs' secret scanning caught this token before it hit production. Credential leak averted."
     code: |
       import requests
       def sync_data():
@@ -34,11 +44,13 @@ challenges:
           url = "https://api.endor.gov/sync"
           return requests.post(url, auth=token)
 
-  # 4. INSECURE PICKLE
-  - title: "🤖 SECTOR: DROID MEMORY"
+  # 4. INSECURE PICKLE (Medium)
+  - title: "SECTOR: DROID MEMORY"
     threat: true
+    difficulty: medium
     bad_line: 3
     info: "DANGEROUS: pickle.loads() on network data allows arbitrary code execution."
+    endor_message: "Endor Labs traced the data flow — raw network bytes reach pickle.loads() with zero validation. Exploitable."
     code: |
       import pickle
       def restore_backup(raw_bytes):
@@ -46,11 +58,13 @@ challenges:
           state = pickle.loads(raw_bytes)
           return state.reboot()
 
-  # 5. INSECURE YAML
-  - title: "📡 SECTOR: COMMS DECODER"
+  # 5. INSECURE YAML (Medium)
+  - title: "SECTOR: COMMS DECODER"
     threat: true
+    difficulty: medium
     bad_line: 3
     info: "VULNERABILITY: yaml.load() without SafeLoader allows object injection."
+    endor_message: "Endor Labs identified that untrusted remote data flows into yaml.load() — object injection is reachable."
     code: |
       import yaml
       def parse_signal(raw_data):
@@ -58,64 +72,156 @@ challenges:
           data = yaml.load(raw_data)
           return data.get("status")
 
-  # 6. PATH TRAVERSAL
-  - title: "📂 SECTOR: ARCHIVE ACCESS"
+  # 6. PATH TRAVERSAL (Medium)
+  - title: "SECTOR: ARCHIVE ACCESS"
     threat: true
+    difficulty: medium
     bad_line: 4
     info: "VULNERABILITY: Path traversal via f-string. Attacker can read sensitive files."
+    endor_message: "Endor Labs traced user input straight into the file path — no sanitization. Directory traversal confirmed reachable."
     code: |
       import os
       def read_log(filename):
           base = "/var/log/endor/"
           # No sanitization on filename
-          path = f"{base}{{filename}}"
+          path = f"{base}{filename}"
           with open(path, "r") as f:
               return f.read()
 
-  # 7. JWT NONE BYPASS
-  - title: "🆔 SECTOR: IDENTITY VERIFIER"
+  # 7. JWT NONE BYPASS (Hard)
+  - title: "SECTOR: IDENTITY VERIFIER"
     threat: true
+    difficulty: hard
     bad_line: 3
     info: "VULNERABILITY: Accepting 'none' algorithm in JWT allows signature bypass."
+    endor_message: "Endor Labs flagged verify_signature=False — any forged token passes authentication. Critical auth bypass."
     code: |
       import jwt
       def verify_pilot(token):
           # Allows 'none' algorithm
-          return jwt.decode(token, options={{"verify_signature": False}})
+          return jwt.decode(token, options={"verify_signature": False})
 
-  # 8. SUBPROCESS SHELL=TRUE
-  - title: "⚡ SECTOR: REACTOR CONTROL"
+  # 8. SUBPROCESS SHELL=TRUE (Hard)
+  - title: "SECTOR: REACTOR CONTROL"
     threat: true
+    difficulty: hard
     bad_line: 4
     info: "CRITICAL: subprocess.call with shell=True is vulnerable to injection."
+    endor_message: "Endor Labs confirmed user-controlled zone_id reaches shell=True subprocess. Full command injection."
     code: |
       import subprocess
       def reboot_system(zone_id):
-          cmd = f"reboot --zone {{zone_id}}"
+          cmd = f"reboot --zone {zone_id}"
           # shell=True is the vulnerability
-          subprocess.call(cmd, shell=True) 
+          subprocess.call(cmd, shell=True)
 
-  # 9. SQL INJECTION
-  - title: "🗄️ SECTOR: PERSONNEL DATABASE"
+  # 9. SQL INJECTION (Hard)
+  - title: "SECTOR: PERSONNEL DATABASE"
     threat: true
+    difficulty: hard
     bad_line: 4
     info: "VULNERABILITY: SQL Injection via f-string. Always use parameters!"
+    endor_message: "Endor Labs traced user input directly into the SQL string — no parameterization. Classic SQLi, fully reachable."
     code: |
       import sqlite3
       def find_spy(name):
           db = sqlite3.connect("db.db")
           # String formatting in SQL
-          q = f"SELECT * FROM users WHERE n='{{name}}'"
+          q = f"SELECT * FROM users WHERE n='{name}'"
           return db.execute(q).fetchall()
 
-  # 10. OPEN REDIRECT
-  - title: "🌐 SECTOR: HOLO-ROUTER"
+  # 10. OPEN REDIRECT (Medium)
+  - title: "SECTOR: HOLO-ROUTER"
     threat: true
+    difficulty: medium
     bad_line: 3
     info: "VULNERABILITY: Open redirect. User input controls the redirect location."
+    endor_message: "Endor Labs mapped the request parameter straight to redirect() — open redirect confirmed exploitable."
     code: |
       from flask import redirect, request
       def goto_base():
           target = request.args.get("url")
           # Unvalidated redirect
           return redirect(target)
+
+  # ============================================
+  # CLEAN / SAFE CODE (threat: false)
+  # These LOOK suspicious but are actually safe.
+  # Hitting kill-switch = FALSE ALARM penalty.
+  # Core Endor Labs reachability message.
+  # ============================================
+
+  # 11. SAFE EVAL - hardcoded constant (Easy)
+  - title: "SECTOR: CONFIG PARSER"
+    threat: false
+    difficulty: easy
+    bad_line: 0
+    info: "FALSE ALARM! eval() is called on a hardcoded constant, not user input. No risk."
+    endor_message: "Endor Labs' reachability analysis shows NO user input reaches eval(). This is a safe operation on a static string. No fire drill needed."
+    code: |
+      CONFIG_EXPR = "{'timeout': 30, 'retries': 3}"
+      def load_config():
+          # eval on hardcoded config string
+          settings = eval(CONFIG_EXPR)
+          return settings
+
+  # 12. SAFE SUBPROCESS - hardcoded command (Easy)
+  - title: "SECTOR: HEALTH MONITOR"
+    threat: false
+    difficulty: easy
+    bad_line: 0
+    info: "FALSE ALARM! subprocess.run() uses a hardcoded command list. No injection possible."
+    endor_message: "Endor Labs confirmed: no user input flows into this subprocess call. The command is fully hardcoded. Zero risk."
+    code: |
+      import subprocess
+      def check_status():
+          # Hardcoded safe command, no shell
+          result = subprocess.run(
+              ["systemctl", "status", "endor-agent"],
+              capture_output=True, text=True)
+          return result.stdout
+
+  # 13. SAFE SQL - parameterized query (Medium)
+  - title: "SECTOR: CREW MANIFEST"
+    threat: false
+    difficulty: medium
+    bad_line: 0
+    info: "FALSE ALARM! This SQL query uses parameterized binding (?). Not injectable."
+    endor_message: "Endor Labs analyzed the query — it uses parameterized placeholders (?), not string formatting. SQL injection is UNREACHABLE here."
+    code: |
+      import sqlite3
+      def lookup_crew(crew_id):
+          db = sqlite3.connect("manifest.db")
+          # Parameterized query - safe!
+          q = "SELECT * FROM crew WHERE id = ?"
+          return db.execute(q, (crew_id,)).fetchone()
+
+  # 14. SAFE PICKLE - with HMAC verification (Hard)
+  - title: "SECTOR: BACKUP VAULT"
+    threat: false
+    difficulty: hard
+    bad_line: 0
+    info: "FALSE ALARM! Data is HMAC-verified before deserialization. Tampering is detected."
+    endor_message: "Endor Labs traced the full data flow — HMAC signature is verified BEFORE pickle.loads(). Untrusted data cannot reach deserialization."
+    code: |
+      import pickle, hmac, hashlib
+      def restore_state(data, sig, key):
+          expected = hmac.new(key, data, hashlib.sha256).digest()
+          if not hmac.compare_digest(sig, expected):
+              raise ValueError("Integrity check failed")
+          return pickle.loads(data)
+
+  # 15. SAFE REQUESTS - hardcoded internal URL (Medium)
+  - title: "SECTOR: TELEMETRY RELAY"
+    threat: false
+    difficulty: medium
+    bad_line: 0
+    info: "FALSE ALARM! The URL is hardcoded to an internal service. No SSRF risk."
+    endor_message: "Endor Labs verified: no user input controls the request URL. This is a hardcoded internal endpoint. SSRF is unreachable."
+    code: |
+      import requests
+      def send_telemetry(metrics):
+          # Hardcoded internal endpoint
+          url = "http://localhost:9090/api/metrics"
+          resp = requests.post(url, json=metrics)
+          return resp.status_code
