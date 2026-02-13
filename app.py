@@ -549,6 +549,58 @@ elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
 def render_live_timer(game_start_time):
     """Render a live JavaScript countdown timer that updates every second."""
     timer_html = f"""
+        <style>
+        @keyframes pulse-timer {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.4; }}
+        }}
+        .live-timer {{
+            font-family: 'Courier New', monospace;
+            font-size: 90px;
+            font-weight: bold;
+            text-align: center;
+            padding: 35px 40px;
+            border: 8px solid;
+            border-radius: 25px;
+            margin: 0;
+            background:
+                linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(10, 30, 10, 0.95) 100%),
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 65, 0.03) 2px, rgba(0, 255, 65, 0.03) 4px);
+            letter-spacing: 12px;
+            position: relative;
+            box-shadow:
+                inset 0 0 30px rgba(0, 0, 0, 0.9),
+                0 0 30px currentColor,
+                0 5px 15px rgba(0, 0, 0, 0.5);
+        }}
+        .live-timer::before {{
+            content: '⏱ TIME REMAINING ⏱';
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 5px 20px;
+            border-radius: 5px;
+            white-space: nowrap;
+            color: currentColor;
+        }}
+        .live-timer::after {{
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            bottom: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            pointer-events: none;
+            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1);
+        }}
+        </style>
         <div id="live-timer" class="live-timer"></div>
         <script>
         (function() {{
@@ -600,7 +652,7 @@ def render_live_timer(game_start_time):
         }})();
         </script>
     """
-    st.components.v1.html(timer_html, height=170)
+    st.components.v1.html(timer_html, height=200)
 
 def render_pipeline(stage=0, halted=False, breached=False):
     stages = ["BUILD", "TEST", "SCAN", "DEPLOY"]
@@ -895,26 +947,26 @@ elif st.session_state.pilot_name:
         score_val = st.session_state.score
 
         failure_cert = f'''
-        <div class="imperial-box" style="border: 5px solid #ff0000; padding: 50px; background: linear-gradient(135deg, #1a0000 0%, #2a0505 100%); text-align: center; border-radius: 15px; box-shadow: 0 0 60px #ff0000, inset 0 0 40px rgba(255, 0, 0, 0.2); margin: 20px auto; position: relative; animation: pulse-red 2s ease-in-out infinite;">
+        <div class="imperial-box" style="border: 5px solid #ff0000; padding: 50px; background: linear-gradient(135deg, #1a0000 0%, #2a0505 100%); text-align: center; border-radius: 15px; box-shadow: 0 0 60px #ff0000, inset 0 0 40px rgba(255, 0, 0, 0.2); margin: 20px auto; position: relative; animation: pulse-red 2s ease-in-out infinite; max-width: 900px;">
             <div style="position: absolute; top: 15%; left: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; color: #ff0000; font-size: 20px; pointer-events: none;">💀</div>
             <div style="position: absolute; top: 25%; right: 25%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0.7s; color: #ff4444; font-size: 20px; pointer-events: none;">💥</div>
             <div style="position: absolute; top: 45%; left: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1.4s; color: #ff0000; font-size: 20px; pointer-events: none;">🔥</div>
             <div style="position: absolute; top: 55%; right: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.1s; color: #ff4444; font-size: 20px; pointer-events: none;">💀</div>
             <div style="position: absolute; top: 75%; left: 30%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.8s; color: #ff0000; font-size: 20px; pointer-events: none;">💥</div>
 
-            <div style="font-size: 100px; margin-bottom: 20px; filter: drop-shadow(0 0 30px #ff0000);">&#9760;&#65039;</div>
-            <h1 style="color:#ff0000; font-size: 38px; text-shadow: 0 0 20px #ff0000; font-family: 'Courier New', monospace;">IMPERIAL OCCUPATION</h1>
-            <h2 style="color:white; font-size: 28px; margin: 20px 0; font-family: 'Courier New', monospace;">{pilot_upper}</h2>
-            <hr style="border: 2px solid #ff0000; margin: 20px 0;">
-            <h3 style="color:white; font-size: 32px; text-shadow: 0 0 15px #ff0000; font-family: 'Courier New', monospace;">FINAL SCORE: {score_val}</h3>
-            <p style="color:#ff9999; font-size: 16px; margin-top: 20px; line-height: 1.8; font-family: 'Courier New', monospace;">
+            <div style="font-size: 100px; margin-bottom: 20px; filter: drop-shadow(0 0 30px #ff0000); position: relative; z-index: 1;">&#9760;&#65039;</div>
+            <h1 style="color:#ff0000; font-size: 38px; text-shadow: 0 0 20px #ff0000; font-family: 'Courier New', monospace; position: relative; z-index: 1;">IMPERIAL OCCUPATION</h1>
+            <h2 style="color:white; font-size: 28px; margin: 20px 0; font-family: 'Courier New', monospace; position: relative; z-index: 1;">{pilot_upper}</h2>
+            <hr style="border: 2px solid #ff0000; margin: 20px 0; position: relative; z-index: 1;">
+            <h3 style="color:white; font-size: 32px; text-shadow: 0 0 15px #ff0000; font-family: 'Courier New', monospace; position: relative; z-index: 1;">FINAL SCORE: {score_val}</h3>
+            <p style="color:#ff9999; font-size: 16px; margin-top: 20px; margin-bottom: 0; line-height: 1.8; font-family: 'Courier New', monospace; position: relative; z-index: 1;">
                 &#128680; Without <strong>Endor Labs</strong>, you can't tell real threats from false alarms.<br>
                 &#128737; <strong>Reachability analysis</strong> is your only safety harness in the AI era.<br>
                 &#9760;&#65039; The Empire has taken control of your pipeline.
             </p>
         </div>
         '''
-        st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }} @keyframes pulse-red {{ 0%, 100% {{ box-shadow: 0 0 20px #ff0000; }} 50% {{ box-shadow: 0 0 60px #ff0000, 0 0 100px #ff4444; }} }}</style>{failure_cert}', height=500)
+        st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }} @keyframes pulse-red {{ 0%, 100% {{ box-shadow: 0 0 20px #ff0000; }} 50% {{ box-shadow: 0 0 60px #ff0000, 0 0 100px #ff4444; }} }}</style>{failure_cert}', height=650)
 
     else:
         # Render victory certificate using st.components.v1.html for better compatibility
@@ -922,7 +974,7 @@ elif st.session_state.pilot_name:
         score_val = st.session_state.score
 
         victory_cert = f'''
-        <div class="certificate-box" style="border: 5px double #00ff41; padding: 50px; background: linear-gradient(135deg, #0a140a 0%, #0d1f0d 100%); text-align: center; border-radius: 20px; box-shadow: 0 0 60px #00ff41, inset 0 0 40px rgba(0, 255, 65, 0.1); margin: 20px auto; position: relative; overflow: hidden;">
+        <div class="certificate-box" style="border: 5px double #00ff41; padding: 50px; background: linear-gradient(135deg, #0a140a 0%, #0d1f0d 100%); text-align: center; border-radius: 20px; box-shadow: 0 0 60px #00ff41, inset 0 0 40px rgba(0, 255, 65, 0.1); margin: 20px auto; position: relative; overflow: hidden; max-width: 900px;">
             <div style="position: absolute; top: 10%; left: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; font-size: 20px; pointer-events: none;">✨</div>
             <div style="position: absolute; top: 20%; right: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0.5s; font-size: 20px; pointer-events: none;">⭐</div>
             <div style="position: absolute; top: 40%; left: 10%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1s; font-size: 20px; pointer-events: none;">💫</div>
@@ -930,19 +982,19 @@ elif st.session_state.pilot_name:
             <div style="position: absolute; top: 70%; left: 25%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2s; font-size: 20px; pointer-events: none;">🌟</div>
             <div style="position: absolute; top: 30%; right: 30%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.5s; font-size: 20px; pointer-events: none;">💫</div>
 
-            <div style="font-size: 50px; margin: 20px 0; filter: drop-shadow(0 0 10px #00ff41);">&#11088; &#127775; &#11088;</div>
-            <h1 style="color:#00ff41; font-size: 40px; text-shadow: 0 0 20px #00ff41; font-family: 'Courier New', monospace;">REPUBLIC COMMENDATION</h1>
+            <div style="font-size: 50px; margin: 20px 0; filter: drop-shadow(0 0 10px #00ff41); position: relative; z-index: 1;">&#11088; &#127775; &#11088;</div>
+            <h1 style="color:#00ff41; font-size: 40px; text-shadow: 0 0 20px #00ff41; font-family: 'Courier New', monospace; position: relative; z-index: 1;">REPUBLIC COMMENDATION</h1>
             <h2 style="color:#00ff41; font-size: 30px; margin: 20px 0; position: relative; z-index: 1; font-family: 'Courier New', monospace;">{pilot_upper}</h2>
-            <hr style="border: 2px solid #00ff41; margin: 20px 0;">
+            <hr style="border: 2px solid #00ff41; margin: 20px 0; position: relative; z-index: 1;">
             <h3 style="color:white; font-size: 34px; text-shadow: 0 0 15px #00ff41; position: relative; z-index: 1; font-family: 'Courier New', monospace;">FINAL SCORE: {score_val}</h3>
-            <p style="color:rgba(0, 255, 65, 0.7); font-size: 16px; margin-top: 20px; line-height: 1.8; position: relative; z-index: 1; font-family: 'Courier New', monospace;">
+            <p style="color:rgba(0, 255, 65, 0.7); font-size: 16px; margin-top: 20px; margin-bottom: 0; line-height: 1.8; position: relative; z-index: 1; font-family: 'Courier New', monospace;">
                 &#127942; You separated real threats from noise &mdash; just like <strong>Endor Labs</strong>.<br>
                 &#128737; <strong>Reachability-powered security.</strong> No false alarms. No missed threats.<br>
                 &#11088; May the Force be with your pipeline.
             </p>
         </div>
         '''
-        st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }}</style>{victory_cert}', height=500)
+        st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }}</style>{victory_cert}', height=650)
 
     # Scoring breakdown
     st.markdown("""
