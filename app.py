@@ -64,7 +64,16 @@ def select_game_challenges(pool):
 def get_remaining_time():
     if 'game_start_time' not in st.session_state:
         return GAME_DURATION
+
+    # If paused, return the time when pause started
+    if st.session_state.get('paused', False):
+        return st.session_state.get('pause_time', GAME_DURATION)
+
+    # Account for total paused duration
     elapsed = time.time() - st.session_state.game_start_time
+    if 'total_pause_duration' in st.session_state:
+        elapsed -= st.session_state.total_pause_duration
+
     return max(0, GAME_DURATION - elapsed)
 
 def get_typing_speed():
@@ -78,6 +87,7 @@ state_defaults = {
     'pilot_name': "", 'status': "active", 'db_updated': False,
     'current_line_idx': 0, 'music_on': True,
     'time_expired': False, 'pipeline_stage': 0,
+    'paused': False, 'pause_time': 0,
 }
 for key, val in state_defaults.items():
     if key not in st.session_state:
@@ -546,8 +556,59 @@ elif st.session_state.lvl <= 5 and not st.session_state.time_expired:
     play_audio("imperial_march.mp3", loop=True, volume=0.15, audio_id="game-music")
 
 # --- 4. UI COMPONENTS ---
-def render_live_timer(game_start_time):
+def render_live_timer(game_start_time, paused=False, pause_time=0):
     """Render a live JavaScript countdown timer that updates every second."""
+    # If paused, show static paused time
+    if paused:
+        mins = int(pause_time // 60)
+        secs = int(pause_time % 60)
+        time_string = f"{mins}:{secs:02d}"
+
+        timer_html = f"""
+            <style>
+            .live-timer {{
+                font-family: 'Courier New', monospace;
+                font-size: 90px;
+                font-weight: bold;
+                text-align: center;
+                padding: 35px 40px;
+                border: 8px solid #ffaa00;
+                border-radius: 25px;
+                margin: 0;
+                background:
+                    linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(10, 30, 10, 0.95) 100%),
+                    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 65, 0.03) 2px, rgba(0, 255, 65, 0.03) 4px);
+                letter-spacing: 12px;
+                position: relative;
+                color: #ffaa00;
+                text-shadow: 0 0 20px #ffaa00;
+                box-shadow:
+                    inset 0 0 30px rgba(0, 0, 0, 0.9),
+                    0 0 30px rgba(255, 170, 0, 0.3),
+                    0 5px 15px rgba(0, 0, 0, 0.5);
+            }}
+            .live-timer::before {{
+                content: '⏸ PAUSED ⏸';
+                position: absolute;
+                top: -18px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 14px;
+                font-weight: bold;
+                letter-spacing: 3px;
+                background: rgba(0, 0, 0, 0.95);
+                padding: 5px 20px;
+                border-radius: 5px;
+                white-space: nowrap;
+                color: #ffaa00;
+            }}
+            </style>
+            <div id="live-timer" class="live-timer">{time_string}</div>
+        """
+        st.components.v1.html(timer_html, height=200)
+        return
+
+    # Normal active timer
     timer_html = f"""
         <style>
         @keyframes pulse-timer {{
@@ -606,11 +667,12 @@ def render_live_timer(game_start_time):
         (function() {{
             var startTime = {game_start_time};
             var duration = {GAME_DURATION};
+            var totalPauseDuration = {st.session_state.get('total_pause_duration', 0)};
             var timerElement = document.getElementById('live-timer');
 
             function updateTimer() {{
                 var now = Date.now() / 1000;
-                var elapsed = now - startTime;
+                var elapsed = now - startTime - totalPauseDuration;
                 var remaining = Math.max(0, duration - elapsed);
 
                 var mins = Math.floor(remaining / 60);
@@ -750,6 +812,27 @@ def handle_code_complete():
         st.session_state.info_override = "CORRECT! You recognized this code was safe."
         st.session_state.sound_effect = "success"
 
+def handle_pause():
+    """Pause the game and timer."""
+    st.session_state.paused = True
+    st.session_state.pause_time = get_remaining_time()
+    st.session_state.pause_start = time.time()
+
+def handle_resume():
+    """Resume the game and timer."""
+    if st.session_state.paused and 'pause_start' in st.session_state:
+        # Calculate how long we were paused
+        pause_duration = time.time() - st.session_state.pause_start
+
+        # Add to total pause duration
+        if 'total_pause_duration' not in st.session_state:
+            st.session_state.total_pause_duration = 0
+        st.session_state.total_pause_duration += pause_duration
+
+        # Clear pause state
+        st.session_state.paused = False
+        del st.session_state.pause_start
+
 def next_sector_reset():
     st.session_state.lvl += 1
     if st.session_state.game_challenges and st.session_state.lvl <= 5:
@@ -761,6 +844,7 @@ def next_sector_reset():
     st.session_state.status = "active"
     st.session_state.current_line_idx = 0
     st.session_state.pipeline_stage = 0
+    st.session_state.paused = False
     if 'info_override' in st.session_state:
         del st.session_state.info_override
     if 'sound_effect' in st.session_state:
@@ -771,51 +855,58 @@ st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; let
 
 # ==================== LOGIN SCREEN ====================
 if not st.session_state.pilot_name:
-    # Clear any previous content
-    st.empty()
+    # Create isolated container for login screen
+    login_container = st.container()
 
-    st.markdown("""
-        <div style="text-align:center; margin: 40px 0 30px 0;">
-            <div style="font-size: 80px; margin-bottom: 10px; animation: float-up 3s ease-in-out infinite;">&#9760;&#65039;</div>
-            <h1 style="color:#00ff41 !important; font-size: 42px; letter-spacing: 6px; text-shadow: 0 0 20px #00ff41;">AI KILL-SWITCH</h1>
-            <p style="color:#00ff41aa; font-size: 18px; letter-spacing: 3px;">SURVIVAL CHALLENGE</p>
-        </div>
-    """, unsafe_allow_html=True)
+    with login_container:
+        st.markdown("""
+            <div style="text-align:center; margin: 40px 0 30px 0;">
+                <div style="font-size: 80px; margin-bottom: 10px; animation: float-up 3s ease-in-out infinite;">&#9760;&#65039;</div>
+                <h1 style="color:#00ff41 !important; font-size: 42px; letter-spacing: 6px; text-shadow: 0 0 20px #00ff41;">AI KILL-SWITCH</h1>
+                <p style="color:#00ff41aa; font-size: 18px; letter-spacing: 3px;">SURVIVAL CHALLENGE</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("""
-        <div style="max-width: 550px; margin: 0 auto 40px auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
-            <p style="color: #00ff41aa; font-size: 14px; text-align: center; line-height: 2;">
-                &#128680; An AI Agent is pushing code to production at <strong style="color:#ff4444;">10x speed</strong>.<br>
-                &#127919; Your mission: <strong style="color:#ff4444;">KILL</strong> the pipeline when you spot a real threat.<br>
-                &#9888;&#65039; But beware &mdash; <strong style="color:#ffaa00;">false alarms cost you points</strong>.<br>
-                &#128737; <strong style="color:#00ccff;">Only Endor Labs knows what's truly dangerous.</strong><br><br>
-                <span style="color:#ffaa00; font-size: 16px; font-weight: bold;">&#9200; You have 60 seconds. 5 sectors. Go.</span>
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+        st.markdown("""
+            <div style="max-width: 550px; margin: 0 auto 40px auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
+                <p style="color: #00ff41aa; font-size: 14px; text-align: center; line-height: 2;">
+                    &#128680; An AI Agent is pushing code to production at <strong style="color:#ff4444;">10x speed</strong>.<br>
+                    &#127919; Your mission: <strong style="color:#ff4444;">KILL</strong> the pipeline when you spot a real threat.<br>
+                    &#9888;&#65039; But beware &mdash; <strong style="color:#ffaa00;">false alarms cost you points</strong>.<br>
+                    &#128737; <strong style="color:#00ccff;">Only Endor Labs knows what's truly dangerous.</strong><br><br>
+                    <span style="color:#ffaa00; font-size: 16px; font-weight: bold;">&#9200; You have 60 seconds. 5 sectors. Go.</span>
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown('<div style="max-width: 450px; margin: 0 auto;">', unsafe_allow_html=True)
-    with st.form("login"):
-        name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK")
-        if st.form_submit_button("&#128640; INITIATE SEQUENCE"):
-            if name:
-                st.session_state.pilot_name = name
-                challenges = select_game_challenges(st.session_state.challenge_pool)
-                st.session_state.game_challenges = challenges
-                st.session_state.current_threat = challenges[0]
-                st.session_state.game_start_time = time.time()
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div style="max-width: 450px; margin: 0 auto;">', unsafe_allow_html=True)
+        with st.form("login"):
+            name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK")
+            if st.form_submit_button("&#128640; INITIATE SEQUENCE"):
+                if name:
+                    st.session_state.pilot_name = name
+                    st.session_state.total_pause_duration = 0
+                    challenges = select_game_challenges(st.session_state.challenge_pool)
+                    st.session_state.game_challenges = challenges
+                    st.session_state.current_threat = challenges[0]
+                    st.session_state.game_start_time = time.time()
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Prevent any further rendering
     st.stop()
+
+# Clear login container once game starts
+elif st.session_state.pilot_name and st.session_state.lvl == 1 and st.session_state.current_line_idx == 0:
+    # Force clear on first frame of game
+    st.empty()
 
 # ==================== ACTIVE GAME (5 LEVELS) ====================
 elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
     remaining = get_remaining_time()
 
-    # Check if time expired
-    if remaining <= 0:
+    # Check if time expired (only if not paused)
+    if not st.session_state.get('paused', False) and remaining <= 0:
         st.session_state.time_expired = True
         st.rerun()
 
@@ -823,17 +914,34 @@ elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.sessio
     col1, col2 = st.columns([3, 1])
 
     with col2:
-        render_live_timer(st.session_state.game_start_time)
+        render_live_timer(
+            st.session_state.game_start_time,
+            paused=st.session_state.get('paused', False),
+            pause_time=st.session_state.get('pause_time', 0)
+        )
         st.metric("SCORE", st.session_state.score)
         st.metric("SECTOR", f"{st.session_state.lvl}/5")
         lvl_config = LEVEL_CONFIG.get(st.session_state.lvl, LEVEL_CONFIG[5])
         st.markdown(f'<div class="level-badge">{lvl_config["description"]}</div>', unsafe_allow_html=True)
         st.divider()
-        if not st.session_state.halted and not st.session_state.panic:
-            st.button("&#128680; KILL SWITCH", on_click=handle_kill_switch)
-        elif st.session_state.halted or st.session_state.panic:
+
+        # Show appropriate buttons based on game state
+        if st.session_state.halted or st.session_state.panic:
+            # Results screen - show pause and next sector buttons
             st.markdown('<div style="text-align: center; color: #ffaa00; font-size: 12px; font-weight: bold; margin: 10px 0; letter-spacing: 1px;">&#128172; REVIEW RESULTS BELOW</div>', unsafe_allow_html=True)
-            st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset, type="primary")
+
+            if st.session_state.paused:
+                st.markdown('<div style="text-align: center; color: #00ff41; font-size: 11px; margin-bottom: 10px;">⏸ TIMER PAUSED</div>', unsafe_allow_html=True)
+                st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True)
+            else:
+                st.button("⏸ PAUSE & REVIEW", on_click=handle_pause, use_container_width=True)
+
+            st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
+            st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset, type="secondary", use_container_width=True)
+
+        else:
+            # Active game - show kill switch
+            st.button("&#128680; KILL SWITCH", on_click=handle_kill_switch, use_container_width=True)
 
     with col1:
         challenge = st.session_state.current_threat
@@ -871,10 +979,11 @@ elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.sessio
                 if st.session_state.halted:
                     break
 
-                # Timer check per line
-                if get_remaining_time() <= 0:
-                    st.session_state.time_expired = True
-                    st.rerun()
+                # Timer check per line (skip if paused)
+                if not st.session_state.get('paused', False):
+                    if get_remaining_time() <= 0:
+                        st.session_state.time_expired = True
+                        st.rerun()
 
                 st.session_state.current_line_idx = idx
 
@@ -887,10 +996,11 @@ elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.sessio
                 for char in line:
                     if st.session_state.halted:
                         break
-                    # Timer check per character
-                    if get_remaining_time() <= 0:
-                        st.session_state.time_expired = True
-                        st.rerun()
+                    # Timer check per character (skip if paused)
+                    if not st.session_state.get('paused', False):
+                        if get_remaining_time() <= 0:
+                            st.session_state.time_expired = True
+                            st.rerun()
                     full_text += char
                     with terminal_placeholder:
                         render_terminal(full_text, title=challenge["title"])
