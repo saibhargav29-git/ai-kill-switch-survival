@@ -896,13 +896,8 @@ if not st.session_state.pilot_name:
     # Prevent any further rendering
     st.stop()
 
-# Clear login container once game starts
-elif st.session_state.pilot_name and st.session_state.lvl == 1 and st.session_state.current_line_idx == 0:
-    # Force clear on first frame of game
-    st.empty()
-
 # ==================== ACTIVE GAME (5 LEVELS) ====================
-elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
+if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
     remaining = get_remaining_time()
 
     # Check if time expired (only if not paused)
