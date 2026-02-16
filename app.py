@@ -771,6 +771,9 @@ st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; let
 
 # ==================== LOGIN SCREEN ====================
 if not st.session_state.pilot_name:
+    # Clear any previous content
+    st.empty()
+
     st.markdown("""
         <div style="text-align:center; margin: 40px 0 30px 0;">
             <div style="font-size: 80px; margin-bottom: 10px; animation: float-up 3s ease-in-out infinite;">&#9760;&#65039;</div>
@@ -804,6 +807,9 @@ if not st.session_state.pilot_name:
                 st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Prevent any further rendering
+    st.stop()
+
 # ==================== ACTIVE GAME (5 LEVELS) ====================
 elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
     remaining = get_remaining_time()
@@ -826,7 +832,8 @@ elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.sessio
         if not st.session_state.halted and not st.session_state.panic:
             st.button("&#128680; KILL SWITCH", on_click=handle_kill_switch)
         elif st.session_state.halted or st.session_state.panic:
-            st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset)
+            st.markdown('<div style="text-align: center; color: #ffaa00; font-size: 12px; font-weight: bold; margin: 10px 0; letter-spacing: 1px;">&#128172; REVIEW RESULTS BELOW</div>', unsafe_allow_html=True)
+            st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset, type="primary")
 
     with col1:
         challenge = st.session_state.current_threat
@@ -948,11 +955,50 @@ elif st.session_state.pilot_name:
 
         failure_cert = f'''
         <div class="imperial-box" style="border: 5px solid #ff0000; padding: 50px; background: linear-gradient(135deg, #1a0000 0%, #2a0505 100%); text-align: center; border-radius: 15px; box-shadow: 0 0 60px #ff0000, inset 0 0 40px rgba(255, 0, 0, 0.2); margin: 20px auto; position: relative; animation: pulse-red 2s ease-in-out infinite; max-width: 900px;">
-            <div style="position: absolute; top: 15%; left: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; color: #ff0000; font-size: 20px; pointer-events: none;">💀</div>
-            <div style="position: absolute; top: 25%; right: 25%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0.7s; color: #ff4444; font-size: 20px; pointer-events: none;">💥</div>
-            <div style="position: absolute; top: 45%; left: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1.4s; color: #ff0000; font-size: 20px; pointer-events: none;">🔥</div>
-            <div style="position: absolute; top: 55%; right: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.1s; color: #ff4444; font-size: 20px; pointer-events: none;">💀</div>
-            <div style="position: absolute; top: 75%; left: 30%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.8s; color: #ff0000; font-size: 20px; pointer-events: none;">💥</div>
+            <!-- Imperial Logo SVGs floating -->
+            <svg style="position: absolute; top: 15%; left: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; pointer-events: none; width: 40px; height: 40px;" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#ff0000" stroke-width="3"/>
+                <path d="M50 10 L50 90 M10 50 L90 50" stroke="#ff0000" stroke-width="3"/>
+                <path d="M20 20 L80 80 M80 20 L20 80" stroke="#ff0000" stroke-width="2"/>
+                <circle cx="50" cy="50" r="15" fill="#ff0000"/>
+            </svg>
+
+            <!-- TIE Fighter SVG -->
+            <svg style="position: absolute; top: 25%; right: 25%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0.7s; pointer-events: none; width: 45px; height: 45px;" viewBox="0 0 100 100">
+                <rect x="10" y="20" width="15" height="60" fill="#ff4444" rx="2"/>
+                <rect x="75" y="20" width="15" height="60" fill="#ff4444" rx="2"/>
+                <circle cx="50" cy="50" r="18" fill="#ff0000"/>
+                <circle cx="50" cy="50" r="12" fill="#1a0000"/>
+                <rect x="25" y="48" width="50" height="4" fill="#ff4444"/>
+            </svg>
+
+            <!-- Death Star SVG -->
+            <svg style="position: absolute; top: 45%; left: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1.4s; pointer-events: none; width: 50px; height: 50px;" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="#ff0000" opacity="0.3"/>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#ff0000" stroke-width="2"/>
+                <circle cx="65" cy="35" r="12" fill="none" stroke="#ff0000" stroke-width="3"/>
+                <line x1="10" y1="50" x2="90" y2="50" stroke="#ff0000" stroke-width="2"/>
+                <line x1="10" y1="40" x2="90" y2="40" stroke="#ff0000" stroke-width="1" opacity="0.5"/>
+                <line x1="10" y1="60" x2="90" y2="60" stroke="#ff0000" stroke-width="1" opacity="0.5"/>
+            </svg>
+
+            <!-- Imperial Cog -->
+            <svg style="position: absolute; top: 55%; right: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.1s; pointer-events: none; width: 40px; height: 40px;" viewBox="0 0 100 100">
+                <path d="M50 5 L55 20 L70 15 L65 30 L80 35 L70 45 L80 55 L65 60 L70 75 L55 70 L50 85 L45 70 L30 75 L35 60 L20 55 L30 45 L20 35 L35 30 L30 15 L45 20 Z" fill="none" stroke="#ff4444" stroke-width="2"/>
+                <circle cx="50" cy="50" r="15" fill="#ff0000"/>
+            </svg>
+
+            <!-- Red Lightsaber -->
+            <svg style="position: absolute; top: 75%; left: 30%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.8s; pointer-events: none; width: 35px; height: 35px;" viewBox="0 0 100 100">
+                <rect x="45" y="10" width="10" height="60" fill="#ff0000" opacity="0.8" filter="url(#glow)"/>
+                <rect x="43" y="72" width="14" height="20" fill="#666" rx="2"/>
+                <defs>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                </defs>
+            </svg>
 
             <div style="font-size: 100px; margin-bottom: 20px; filter: drop-shadow(0 0 30px #ff0000); position: relative; z-index: 1;">&#9760;&#65039;</div>
             <h1 style="color:#ff0000; font-size: 38px; text-shadow: 0 0 20px #ff0000; font-family: 'Courier New', monospace; position: relative; z-index: 1;">IMPERIAL OCCUPATION</h1>
@@ -975,12 +1021,65 @@ elif st.session_state.pilot_name:
 
         victory_cert = f'''
         <div class="certificate-box" style="border: 5px double #00ff41; padding: 50px; background: linear-gradient(135deg, #0a140a 0%, #0d1f0d 100%); text-align: center; border-radius: 20px; box-shadow: 0 0 60px #00ff41, inset 0 0 40px rgba(0, 255, 65, 0.1); margin: 20px auto; position: relative; overflow: hidden; max-width: 900px;">
-            <div style="position: absolute; top: 10%; left: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; font-size: 20px; pointer-events: none;">✨</div>
-            <div style="position: absolute; top: 20%; right: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0.5s; font-size: 20px; pointer-events: none;">⭐</div>
-            <div style="position: absolute; top: 40%; left: 10%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1s; font-size: 20px; pointer-events: none;">💫</div>
-            <div style="position: absolute; top: 60%; right: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1.5s; font-size: 20px; pointer-events: none;">✨</div>
-            <div style="position: absolute; top: 70%; left: 25%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2s; font-size: 20px; pointer-events: none;">🌟</div>
-            <div style="position: absolute; top: 30%; right: 30%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.5s; font-size: 20px; pointer-events: none;">💫</div>
+            <!-- Rebel Alliance Starbird Logo -->
+            <svg style="position: absolute; top: 10%; left: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; pointer-events: none; width: 45px; height: 45px;" viewBox="0 0 100 100">
+                <path d="M50 10 Q30 30 25 50 Q30 70 50 90 Q70 70 75 50 Q70 30 50 10" fill="none" stroke="#00ff41" stroke-width="3"/>
+                <ellipse cx="50" cy="50" rx="8" ry="25" fill="none" stroke="#00ff41" stroke-width="2"/>
+                <circle cx="50" cy="50" r="6" fill="#00ff41"/>
+            </svg>
+
+            <!-- X-Wing Starfighter -->
+            <svg style="position: absolute; top: 20%; right: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0.5s; pointer-events: none; width: 50px; height: 50px;" viewBox="0 0 100 100">
+                <line x1="20" y1="20" x2="45" y2="45" stroke="#00ff41" stroke-width="3"/>
+                <line x1="80" y1="20" x2="55" y2="45" stroke="#00ff41" stroke-width="3"/>
+                <line x1="20" y1="80" x2="45" y2="55" stroke="#00ff41" stroke-width="3"/>
+                <line x1="80" y1="80" x2="55" y2="55" stroke="#00ff41" stroke-width="3"/>
+                <rect x="45" y="45" width="10" height="10" fill="#00ff41"/>
+                <circle cx="20" cy="20" r="4" fill="#00ccff"/>
+                <circle cx="80" cy="20" r="4" fill="#00ccff"/>
+                <circle cx="20" cy="80" r="4" fill="#00ccff"/>
+                <circle cx="80" cy="80" r="4" fill="#00ccff"/>
+            </svg>
+
+            <!-- Green Lightsaber -->
+            <svg style="position: absolute; top: 40%; left: 10%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1s; pointer-events: none; width: 35px; height: 35px;" viewBox="0 0 100 100">
+                <rect x="45" y="10" width="10" height="60" fill="#00ff41" opacity="0.8" filter="url(#greenGlow)"/>
+                <rect x="43" y="72" width="14" height="20" fill="#888" rx="2"/>
+                <defs>
+                    <filter id="greenGlow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                </defs>
+            </svg>
+
+            <!-- Rebel Helmet -->
+            <svg style="position: absolute; top: 60%; right: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 1.5s; pointer-events: none; width: 40px; height: 40px;" viewBox="0 0 100 100">
+                <path d="M30 40 Q50 20 70 40 L70 70 Q50 80 30 70 Z" fill="none" stroke="#00ff41" stroke-width="2"/>
+                <rect x="25" y="65" width="50" height="8" fill="#00ff41" opacity="0.5" rx="2"/>
+                <circle cx="40" cy="50" r="5" fill="none" stroke="#00ff41" stroke-width="2"/>
+                <circle cx="60" cy="50" r="5" fill="none" stroke="#00ff41" stroke-width="2"/>
+            </svg>
+
+            <!-- Blue Lightsaber -->
+            <svg style="position: absolute; top: 70%; left: 25%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2s; pointer-events: none; width: 35px; height: 35px;" viewBox="0 0 100 100">
+                <rect x="45" y="10" width="10" height="60" fill="#00ccff" opacity="0.8" filter="url(#blueGlow)"/>
+                <rect x="43" y="72" width="14" height="20" fill="#888" rx="2"/>
+                <defs>
+                    <filter id="blueGlow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                </defs>
+            </svg>
+
+            <!-- Rebel Starbird (alternate) -->
+            <svg style="position: absolute; top: 30%; right: 30%; animation: particle-float 4s ease-in-out infinite; animation-delay: 2.5s; pointer-events: none; width: 42px; height: 42px;" viewBox="0 0 100 100">
+                <path d="M50 15 L45 35 Q50 45 55 35 Z" fill="#00ff41" opacity="0.7"/>
+                <path d="M50 85 L45 65 Q50 55 55 65 Z" fill="#00ff41" opacity="0.7"/>
+                <ellipse cx="50" cy="50" rx="6" ry="20" fill="#00ff41" opacity="0.8"/>
+                <circle cx="50" cy="50" r="5" fill="#00ff41"/>
+            </svg>
 
             <div style="font-size: 50px; margin: 20px 0; filter: drop-shadow(0 0 10px #00ff41); position: relative; z-index: 1;">&#11088; &#127775; &#11088;</div>
             <h1 style="color:#00ff41; font-size: 40px; text-shadow: 0 0 20px #00ff41; font-family: 'Courier New', monospace; position: relative; z-index: 1;">REPUBLIC COMMENDATION</h1>
