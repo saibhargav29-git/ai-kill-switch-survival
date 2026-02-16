@@ -855,48 +855,43 @@ st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; let
 
 # ==================== LOGIN SCREEN ====================
 if not st.session_state.pilot_name:
-    # Create a dedicated container for login to ensure it's isolated
-    login_placeholder = st.empty()
+    st.markdown("""
+        <div style="text-align:center; margin: 40px 0 30px 0;">
+            <div style="font-size: 80px; margin-bottom: 10px; animation: float-up 3s ease-in-out infinite;">&#9760;&#65039;</div>
+            <h1 style="color:#00ff41 !important; font-size: 42px; letter-spacing: 6px; text-shadow: 0 0 20px #00ff41;">AI KILL-SWITCH</h1>
+            <p style="color:#00ff41aa; font-size: 18px; letter-spacing: 3px;">SURVIVAL CHALLENGE</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    with login_placeholder.container():
-        st.markdown("""
-            <div style="text-align:center; margin: 40px 0 30px 0;">
-                <div style="font-size: 80px; margin-bottom: 10px; animation: float-up 3s ease-in-out infinite;">&#9760;&#65039;</div>
-                <h1 style="color:#00ff41 !important; font-size: 42px; letter-spacing: 6px; text-shadow: 0 0 20px #00ff41;">AI KILL-SWITCH</h1>
-                <p style="color:#00ff41aa; font-size: 18px; letter-spacing: 3px;">SURVIVAL CHALLENGE</p>
-            </div>
-        """, unsafe_allow_html=True)
+    st.markdown("""
+        <div style="max-width: 550px; margin: 0 auto 40px auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
+            <p style="color: #00ff41aa; font-size: 14px; text-align: center; line-height: 2;">
+                &#128680; An AI Agent is pushing code to production at <strong style="color:#ff4444;">10x speed</strong>.<br>
+                &#127919; Your mission: <strong style="color:#ff4444;">KILL</strong> the pipeline when you spot a real threat.<br>
+                &#9888;&#65039; But beware &mdash; <strong style="color:#ffaa00;">false alarms cost you points</strong>.<br>
+                &#128737; <strong style="color:#00ccff;">Only Endor Labs knows what's truly dangerous.</strong><br><br>
+                <span style="color:#ffaa00; font-size: 16px; font-weight: bold;">&#9200; You have 60 seconds. 5 sectors. Go.</span>
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
-        st.markdown("""
-            <div style="max-width: 550px; margin: 0 auto 40px auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
-                <p style="color: #00ff41aa; font-size: 14px; text-align: center; line-height: 2;">
-                    &#128680; An AI Agent is pushing code to production at <strong style="color:#ff4444;">10x speed</strong>.<br>
-                    &#127919; Your mission: <strong style="color:#ff4444;">KILL</strong> the pipeline when you spot a real threat.<br>
-                    &#9888;&#65039; But beware &mdash; <strong style="color:#ffaa00;">false alarms cost you points</strong>.<br>
-                    &#128737; <strong style="color:#00ccff;">Only Endor Labs knows what's truly dangerous.</strong><br><br>
-                    <span style="color:#ffaa00; font-size: 16px; font-weight: bold;">&#9200; You have 60 seconds. 5 sectors. Go.</span>
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown('<div style="max-width: 450px; margin: 0 auto;">', unsafe_allow_html=True)
-        with st.form("login_form", clear_on_submit=True):
-            name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK", key="pilot_input")
-            if st.form_submit_button("&#128640; INITIATE SEQUENCE", use_container_width=True):
-                if name:
-                    st.session_state.pilot_name = name
-                    st.session_state.total_pause_duration = 0
-                    challenges = select_game_challenges(st.session_state.challenge_pool)
-                    st.session_state.game_challenges = challenges
-                    st.session_state.current_threat = challenges[0]
-                    st.session_state.game_start_time = time.time()
-                    login_placeholder.empty()  # Explicitly clear login before rerun
-                    st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div style="max-width: 450px; margin: 0 auto;">', unsafe_allow_html=True)
+    with st.form("login_form", clear_on_submit=True):
+        name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK", key="pilot_input")
+        if st.form_submit_button("&#128640; INITIATE SEQUENCE", use_container_width=True):
+            if name:
+                st.session_state.pilot_name = name
+                st.session_state.total_pause_duration = 0
+                challenges = select_game_challenges(st.session_state.challenge_pool)
+                st.session_state.game_challenges = challenges
+                st.session_state.current_threat = challenges[0]
+                st.session_state.game_start_time = time.time()
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # ==================== ACTIVE GAME (5 LEVELS) ====================
-elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
+if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
     remaining = get_remaining_time()
 
     # Check if time expired (only if not paused)
@@ -919,35 +914,31 @@ elif st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.sessio
         st.markdown(f'<div class="level-badge">{lvl_config["description"]}</div>', unsafe_allow_html=True)
         st.divider()
 
-        # Use a placeholder to ensure clean button rendering
-        button_area = st.empty()
+        # Show appropriate buttons based on game state - NO placeholder, direct conditional rendering
+        if st.session_state.halted or st.session_state.panic:
+            # Results screen after kill switch - show pause/resume and next sector ONLY
+            st.markdown('<div style="text-align: center; color: #ffaa00; font-size: 12px; font-weight: bold; margin: 10px 0; letter-spacing: 1px;">&#128172; REVIEW RESULTS BELOW</div>', unsafe_allow_html=True)
 
-        with button_area.container():
-            # Show appropriate buttons based on game state
-            if st.session_state.halted or st.session_state.panic:
-                # Results screen after kill switch - show pause/resume and next sector
-                st.markdown('<div style="text-align: center; color: #ffaa00; font-size: 12px; font-weight: bold; margin: 10px 0; letter-spacing: 1px;">&#128172; REVIEW RESULTS BELOW</div>', unsafe_allow_html=True)
-
-                if st.session_state.paused:
-                    st.markdown('<div style="text-align: center; color: #00ff41; font-size: 11px; margin-bottom: 10px;">⏸ TIMER PAUSED</div>', unsafe_allow_html=True)
-                    st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_btn")
-                else:
-                    st.button("⏸ PAUSE & REVIEW", on_click=handle_pause, use_container_width=True, key="pause_results_btn")
-
-                st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
-                st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset, type="secondary", use_container_width=True, key="next_sector_btn")
-
+            if st.session_state.paused:
+                st.markdown('<div style="text-align: center; color: #00ff41; font-size: 11px; margin-bottom: 10px;">⏸ TIMER PAUSED</div>', unsafe_allow_html=True)
+                st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_btn")
             else:
-                # Active gameplay - show kill switch and pause button ONLY
-                st.button("&#128680; KILL SWITCH", on_click=handle_kill_switch, use_container_width=True, key="kill_switch_btn")
+                st.button("⏸ PAUSE & REVIEW", on_click=handle_pause, use_container_width=True, key="pause_results_btn")
 
-                st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
+            st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset, type="secondary", use_container_width=True, key="next_sector_btn")
 
-                if st.session_state.paused:
-                    st.markdown('<div style="text-align: center; color: #00ff41; font-size: 11px; margin-bottom: 10px;">⏸ TIMER PAUSED</div>', unsafe_allow_html=True)
-                    st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_gameplay_btn")
-                else:
-                    st.button("⏸ PAUSE", on_click=handle_pause, use_container_width=True, key="pause_gameplay_btn")
+        else:
+            # Active gameplay - show kill switch and pause button ONLY
+            st.button("&#128680; KILL SWITCH", on_click=handle_kill_switch, use_container_width=True, key="kill_switch_btn")
+
+            st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
+
+            if st.session_state.paused:
+                st.markdown('<div style="text-align: center; color: #00ff41; font-size: 11px; margin-bottom: 10px;">⏸ TIMER PAUSED</div>', unsafe_allow_html=True)
+                st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_gameplay_btn")
+            else:
+                st.button("⏸ PAUSE", on_click=handle_pause, use_container_width=True, key="pause_gameplay_btn")
 
     with col1:
         challenge = st.session_state.current_threat
