@@ -851,6 +851,7 @@ def next_sector_reset():
         del st.session_state.sound_effect
 
 # --- 6. GAME INTERFACE ---
+
 st.markdown('<div style="text-align:center; color:#00ff41; font-weight:bold; letter-spacing:3px; font-family: Courier New, monospace; font-size: 14px;">&#128737; ENDOR LABS &bull; RSA 2026 &bull; AI KILL-SWITCH CHALLENGE</div>', unsafe_allow_html=True)
 
 # ==================== LOGIN SCREEN ====================
@@ -862,7 +863,6 @@ if not st.session_state.pilot_name:
             <p style="color:#00ff41aa; font-size: 18px; letter-spacing: 3px;">SURVIVAL CHALLENGE</p>
         </div>
     """, unsafe_allow_html=True)
-
     st.markdown("""
         <div style="max-width: 550px; margin: 0 auto 40px auto; padding: 25px; border: 2px solid #00ff4166; border-radius: 10px; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 30px rgba(0,255,65,0.2);">
             <p style="color: #00ff41aa; font-size: 14px; text-align: center; line-height: 2;">
@@ -874,32 +874,26 @@ if not st.session_state.pilot_name:
             </p>
         </div>
     """, unsafe_allow_html=True)
-
-    st.markdown('<div style="max-width: 450px; margin: 0 auto;">', unsafe_allow_html=True)
-    with st.form("login_form", clear_on_submit=True):
-        name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK", key="pilot_input")
-        if st.form_submit_button("&#128640; INITIATE SEQUENCE", use_container_width=True):
-            if name:
-                st.session_state.pilot_name = name
-                st.session_state.total_pause_duration = 0
-                challenges = select_game_challenges(st.session_state.challenge_pool)
-                st.session_state.game_challenges = challenges
-                st.session_state.current_threat = challenges[0]
-                st.session_state.game_start_time = time.time()
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK", key="callsign_input",
+                         label_visibility="visible")
+    if st.button("&#128640; INITIATE SEQUENCE", use_container_width=True, key="initiate_btn"):
+        if name:
+            st.session_state.pilot_name = name
+            st.session_state.total_pause_duration = 0
+            challenges = select_game_challenges(st.session_state.challenge_pool)
+            st.session_state.game_challenges = challenges
+            st.session_state.current_threat = challenges[0]
+            st.session_state.game_start_time = time.time()
+            st.rerun()
     st.stop()
 
 # ==================== ACTIVE GAME (5 LEVELS) ====================
 if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
     remaining = get_remaining_time()
-
-    # Check if time expired (only if not paused)
     if not st.session_state.get('paused', False) and remaining <= 0:
         st.session_state.time_expired = True
         st.rerun()
 
-    # Layout
     col1, col2 = st.columns([3, 1])
 
     with col2:
@@ -914,36 +908,29 @@ if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_
         st.markdown(f'<div class="level-badge">{lvl_config["description"]}</div>', unsafe_allow_html=True)
         st.divider()
 
-        # Show appropriate buttons based on game state - NO placeholder, direct conditional rendering
-        if st.session_state.halted or st.session_state.panic:
-            # Results screen after kill switch - show pause/resume and next sector ONLY
+        # Buttons: mutually exclusive based on halted/panic state
+        _is_post_action = st.session_state.halted or st.session_state.panic
+        if _is_post_action:
             st.markdown('<div style="text-align: center; color: #ffaa00; font-size: 12px; font-weight: bold; margin: 10px 0; letter-spacing: 1px;">&#128172; REVIEW RESULTS BELOW</div>', unsafe_allow_html=True)
-
             if st.session_state.paused:
                 st.markdown('<div style="text-align: center; color: #00ff41; font-size: 11px; margin-bottom: 10px;">⏸ TIMER PAUSED</div>', unsafe_allow_html=True)
-                st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_btn")
+                st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_post_btn")
             else:
-                st.button("⏸ PAUSE & REVIEW", on_click=handle_pause, use_container_width=True, key="pause_results_btn")
-
+                st.button("⏸ PAUSE & REVIEW", on_click=handle_pause, use_container_width=True, key="pause_post_btn")
             st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
             st.button("&#128640; NEXT SECTOR >>", on_click=next_sector_reset, type="secondary", use_container_width=True, key="next_sector_btn")
-
         else:
-            # Active gameplay - show kill switch and pause button ONLY
             st.button("&#128680; KILL SWITCH", on_click=handle_kill_switch, use_container_width=True, key="kill_switch_btn")
-
             st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
-
             if st.session_state.paused:
                 st.markdown('<div style="text-align: center; color: #00ff41; font-size: 11px; margin-bottom: 10px;">⏸ TIMER PAUSED</div>', unsafe_allow_html=True)
-                st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_gameplay_btn")
+                st.button("▶ RESUME", on_click=handle_resume, type="primary", use_container_width=True, key="resume_play_btn")
             else:
-                st.button("⏸ PAUSE", on_click=handle_pause, use_container_width=True, key="pause_gameplay_btn")
+                st.button("⏸ PAUSE", on_click=handle_pause, use_container_width=True, key="pause_play_btn")
 
     with col1:
         challenge = st.session_state.current_threat
 
-        # Pipeline visualization
         if st.session_state.halted and st.session_state.status == "success":
             render_pipeline(stage=st.session_state.pipeline_stage, halted=True)
         elif st.session_state.panic and challenge.get("threat"):
@@ -960,12 +947,10 @@ if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_
         feedback_area = st.empty()
         endor_area = st.empty()
 
-        # Play sound effect if present
         if 'sound_effect' in st.session_state:
             play_sound_effect(st.session_state.sound_effect)
             del st.session_state.sound_effect
 
-        # --- STREAMING CODE ---
         if not st.session_state.halted and not st.session_state.panic:
             full_text = ""
             lines = challenge["code"].split('\n')
@@ -975,25 +960,17 @@ if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_
             for idx, line in enumerate(lines):
                 if st.session_state.halted:
                     break
-
-                # Timer check per line (skip if paused)
                 if not st.session_state.get('paused', False):
                     if get_remaining_time() <= 0:
                         st.session_state.time_expired = True
                         st.rerun()
-
                 st.session_state.current_line_idx = idx
-
-                # Update pipeline stage based on progress
                 progress_pct = (idx + 1) / total_lines
                 st.session_state.pipeline_stage = min(3, int(progress_pct * 4))
-
                 progress_placeholder.progress(progress_pct, text=f"SCANNING LINE {idx+1}/{total_lines}")
-
                 for char in line:
                     if st.session_state.halted:
                         break
-                    # Timer check per character (skip if paused)
                     if not st.session_state.get('paused', False):
                         if get_remaining_time() <= 0:
                             st.session_state.time_expired = True
@@ -1002,22 +979,17 @@ if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_
                     with terminal_placeholder:
                         render_terminal(full_text, title=challenge["title"])
                     time.sleep(typing_speed)
-
                 full_text += "\n"
                 time.sleep(typing_speed * 2)
 
-            # Code finished streaming without kill-switch
             if not st.session_state.halted:
                 handle_code_complete()
                 st.session_state.panic = True
                 st.rerun()
-
-        # --- POST-ACTION DISPLAY ---
         else:
             progress_placeholder.empty()
             with terminal_placeholder:
                 render_terminal(challenge["code"], title=challenge["title"], streaming=False)
-
             with feedback_area:
                 if st.session_state.status == "success":
                     msg = st.session_state.get('info_override', challenge["info"])
@@ -1025,42 +997,38 @@ if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_
                 else:
                     msg = st.session_state.get('info_override', "SYSTEM COMPROMISED!")
                     st.error(msg)
-
             with endor_area:
                 render_endor_insight(challenge.get("endor_message", ""))
 
+    st.stop()
+
 # ==================== FINALE ====================
-elif st.session_state.pilot_name:
-    if not st.session_state.db_updated:
-        try:
-            supabase.table("leaderboard").insert({
-                "pilot": st.session_state.pilot_name,
-                "score": st.session_state.score
-            }).execute()
-            st.session_state.db_updated = True
-        except Exception:
-            st.error("DATABASE SYNC FAILED.")
+if not st.session_state.db_updated:
+    try:
+        supabase.table("leaderboard").insert({
+            "pilot": st.session_state.pilot_name,
+            "score": st.session_state.score
+        }).execute()
+        st.session_state.db_updated = True
+    except Exception:
+        st.error("DATABASE SYNC FAILED.")
 
-    # Time expired banner
-    if st.session_state.time_expired and st.session_state.lvl <= 5:
-        st.markdown("""
-            <div style="text-align:center; padding: 25px; border: 3px solid #ffaa00; background: linear-gradient(135deg, #1a1000 0%, #2a1a00 100%); border-radius: 10px; margin-bottom: 20px; box-shadow: 0 0 40px rgba(255,170,0,0.5);">
-                <h2 style="color: #ffaa00 !important; margin: 0; font-size: 32px;">&#9200; TIME'S UP!</h2>
-                <p style="color: #ffaa00aa; font-size: 16px;">The clock ran out before you cleared all sectors.</p>
-            </div>
-        """, unsafe_allow_html=True)
+if st.session_state.time_expired and st.session_state.lvl <= 5:
+    st.markdown("""
+        <div style="text-align:center; padding: 25px; border: 3px solid #ffaa00; background: linear-gradient(135deg, #1a1000 0%, #2a1a00 100%); border-radius: 10px; margin-bottom: 20px; box-shadow: 0 0 40px rgba(255,170,0,0.5);">
+            <h2 style="color: #ffaa00 !important; margin: 0; font-size: 32px;">&#9200; TIME'S UP!</h2>
+            <p style="color: #ffaa00aa; font-size: 16px;">The clock ran out before you cleared all sectors.</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    show_galactic_fx(st.session_state.score >= 100)
+show_galactic_fx(st.session_state.score >= 100)
 
-    if st.session_state.score < 100:
-        # Play Darth Vader voice
-        play_audio("Voicy_Darth Vader Have you now.mp3", loop=False, volume=0.5, audio_id="vader-voice")
+if st.session_state.score < 100:
+    play_audio("Voicy_Darth Vader Have you now.mp3", loop=False, volume=0.5, audio_id="vader-voice")
+    pilot_upper = st.session_state.pilot_name.upper()
+    score_val = st.session_state.score
 
-        # Render failure certificate using st.components.v1.html for better compatibility
-        pilot_upper = st.session_state.pilot_name.upper()
-        score_val = st.session_state.score
-
-        failure_cert = f'''
+    failure_cert = f'''
         <div class="imperial-box" style="border: 5px solid #ff0000; padding: 50px; background: linear-gradient(135deg, #1a0000 0%, #2a0505 100%); text-align: center; border-radius: 15px; box-shadow: 0 0 60px #ff0000, inset 0 0 40px rgba(255, 0, 0, 0.2); margin: 20px auto; position: relative; animation: pulse-red 2s ease-in-out infinite; max-width: 900px;">
             <!-- Imperial Logo SVGs floating -->
             <svg style="position: absolute; top: 15%; left: 20%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; pointer-events: none; width: 40px; height: 40px;" viewBox="0 0 100 100">
@@ -1119,14 +1087,13 @@ elif st.session_state.pilot_name:
             </p>
         </div>
         '''
-        st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }} @keyframes pulse-red {{ 0%, 100% {{ box-shadow: 0 0 20px #ff0000; }} 50% {{ box-shadow: 0 0 60px #ff0000, 0 0 100px #ff4444; }} }}</style>{failure_cert}', height=650)
+    st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }} @keyframes pulse-red {{ 0%, 100% {{ box-shadow: 0 0 20px #ff0000; }} 50% {{ box-shadow: 0 0 60px #ff0000, 0 0 100px #ff4444; }} }}</style>{failure_cert}', height=650)
 
-    else:
-        # Render victory certificate using st.components.v1.html for better compatibility
-        pilot_upper = st.session_state.pilot_name.upper()
-        score_val = st.session_state.score
+else:
+    pilot_upper = st.session_state.pilot_name.upper()
+    score_val = st.session_state.score
 
-        victory_cert = f'''
+    victory_cert = f'''
         <div class="certificate-box" style="border: 5px double #00ff41; padding: 50px; background: linear-gradient(135deg, #0a140a 0%, #0d1f0d 100%); text-align: center; border-radius: 20px; box-shadow: 0 0 60px #00ff41, inset 0 0 40px rgba(0, 255, 65, 0.1); margin: 20px auto; position: relative; overflow: hidden; max-width: 900px;">
             <!-- Rebel Alliance Starbird Logo -->
             <svg style="position: absolute; top: 10%; left: 15%; animation: particle-float 4s ease-in-out infinite; animation-delay: 0s; pointer-events: none; width: 45px; height: 45px;" viewBox="0 0 100 100">
@@ -1200,34 +1167,33 @@ elif st.session_state.pilot_name:
             </p>
         </div>
         '''
-        st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }}</style>{victory_cert}', height=650)
+    st.components.v1.html(f'<style>@keyframes particle-float {{ 0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 1; }} 100% {{ transform: translateY(-100px) translateX(20px) scale(0.5); opacity: 0; }} }}</style>{victory_cert}', height=650)
 
-    # Scoring breakdown
-    st.markdown("""
-        <div style="border: 2px solid #00ff4166; padding: 20px; border-radius: 10px; margin: 20px 0; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 20px rgba(0,255,65,0.2);">
-            <div style="color: #00ff41; font-weight: bold; letter-spacing: 2px; font-size: 14px; margin-bottom: 12px; font-family: Courier New;">&#128202; SCORING INTEL</div>
-            <div style="font-family: Courier New; font-size: 14px; color: #aaa; line-height: 2;">
-                <span style="color: #00ff41;">&#9989; CORRECT KILL (real threat stopped)</span>: +100 pts<br>
-                <span style="color: #00ccff;">&#9989; CORRECT PASS (safe code cleared)</span>: +75 pts<br>
-                <span style="color: #ffaa00;">&#9888;&#65039; TOO EARLY (jumped the gun)</span>: -25 pts<br>
-                <span style="color: #ff6644;">&#10060; FALSE ALARM (killed safe code)</span>: -50 pts<br>
-                <span style="color: #ff0000;">&#128165; MISSED THREAT (breach!)</span>: -75 pts
-            </div>
+st.markdown("""
+    <div style="border: 2px solid #00ff4166; padding: 20px; border-radius: 10px; margin: 20px 0; background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 100%); box-shadow: 0 0 20px rgba(0,255,65,0.2);">
+        <div style="color: #00ff41; font-weight: bold; letter-spacing: 2px; font-size: 14px; margin-bottom: 12px; font-family: Courier New;">&#128202; SCORING INTEL</div>
+        <div style="font-family: Courier New; font-size: 14px; color: #aaa; line-height: 2;">
+            <span style="color: #00ff41;">&#9989; CORRECT KILL (real threat stopped)</span>: +100 pts<br>
+            <span style="color: #00ccff;">&#9989; CORRECT PASS (safe code cleared)</span>: +75 pts<br>
+            <span style="color: #ffaa00;">&#9888;&#65039; TOO EARLY (jumped the gun)</span>: -25 pts<br>
+            <span style="color: #ff6644;">&#10060; FALSE ALARM (killed safe code)</span>: -50 pts<br>
+            <span style="color: #ff0000;">&#128165; MISSED THREAT (breach!)</span>: -75 pts
         </div>
-    """, unsafe_allow_html=True)
+    </div>
+""", unsafe_allow_html=True)
 
-    st.markdown("### &#127942; GALACTIC TOP ACE PILOTS")
-    try:
-        response = supabase.table("leaderboard").select("pilot, score").order("score", desc=True).limit(5).execute()
-        if response.data:
-            lb_df = pd.DataFrame(response.data)
-            st.table(lb_df[['pilot', 'score']])
-    except Exception:
-        st.error("Comms Jammed.")
+st.markdown("### &#127942; GALACTIC TOP ACE PILOTS")
+try:
+    response = supabase.table("leaderboard").select("pilot, score").order("score", desc=True).limit(5).execute()
+    if response.data:
+        lb_df = pd.DataFrame(response.data)
+        st.table(lb_df[['pilot', 'score']])
+except Exception:
+    st.error("Comms Jammed.")
 
-    if st.button("&#128260; REBOOT FOR NEXT PILOT"):
-        st.session_state.clear()
-        st.rerun()
+if st.button("&#128260; REBOOT FOR NEXT PILOT"):
+    st.session_state.clear()
+    st.rerun()
 
 # --- 7. SYSTEM ADMIN ---
 st.divider()
