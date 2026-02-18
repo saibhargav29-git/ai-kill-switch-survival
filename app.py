@@ -874,6 +874,21 @@ if not st.session_state.pilot_name:
             </p>
         </div>
     """, unsafe_allow_html=True)
+    st.markdown("""<style>
+    .stButton>button {
+        background: linear-gradient(135deg, #001a00 0%, #003d00 100%) !important;
+        height: 3em !important;
+        border-radius: 8px !important;
+        animation: none !important;
+        border: 2px solid #00ff41 !important;
+        box-shadow: 0 0 20px rgba(0,255,65,0.3) !important;
+        font-size: 18px !important;
+    }
+    .stButton>button:hover {
+        box-shadow: 0 0 40px rgba(0,255,65,0.6) !important;
+        transform: scale(1.02) !important;
+    }
+    </style>""", unsafe_allow_html=True)
     name = st.text_input("ENTER PILOT CALLSIGN:", placeholder="e.g. MAVERICK", key="callsign_input",
                          label_visibility="visible")
     if st.button("&#128640; INITIATE SEQUENCE", use_container_width=True, key="initiate_btn"):
@@ -890,7 +905,10 @@ if not st.session_state.pilot_name:
 # ==================== ACTIVE GAME (5 LEVELS) ====================
 if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_state.time_expired:
     remaining = get_remaining_time()
-    if not st.session_state.get('paused', False) and remaining <= 0:
+    _is_post_action = st.session_state.halted or st.session_state.panic
+    # Only expire the timer when actively playing — not while reviewing a kill-switch result.
+    # Without this guard, clicking Kill Switch near T=0 causes a double-rerun → skips to finale.
+    if not st.session_state.get('paused', False) and remaining <= 0 and not _is_post_action:
         st.session_state.time_expired = True
         st.rerun()
 
@@ -909,7 +927,6 @@ if st.session_state.pilot_name and st.session_state.lvl <= 5 and not st.session_
         st.divider()
 
         # Buttons: mutually exclusive based on halted/panic state
-        _is_post_action = st.session_state.halted or st.session_state.panic
         if _is_post_action:
             st.markdown('<div style="text-align: center; color: #ffaa00; font-size: 12px; font-weight: bold; margin: 10px 0; letter-spacing: 1px;">&#128172; REVIEW RESULTS BELOW</div>', unsafe_allow_html=True)
             if st.session_state.paused:
